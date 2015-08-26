@@ -1,0 +1,123 @@
+
+.uploader-disclaimer {
+    padding: 5px;
+    font-weight: bold;
+    font-style: italic;
+}
+
+.uploader-fileList {
+    margin-top: 10px;
+    border: 2px solid #ccc;
+    -webkit-border-radius: 5px;
+    -moz-border-radius: 5px;
+    border-radius: 5px;
+    font-family: arial;
+    font-size: 0.9em;
+    /* visibility: hidden; */
+}
+
+.uploader-button {
+	float: right; 
+	margin-right: 5px; 
+}
+
+.uploader-status {
+    float: right;
+    color: yellow;
+    background-color: red;
+    font-weight:bold;
+    padding-left: 5px;
+    padding-right: 5px;
+    /* visibility: hidden;*/
+}
+
+.file-item-odd {
+    margin-top: 2px;
+    background-color: #dddddd;
+    border-width: 1px;
+    border-radius: 5px;
+}
+
+.file-item-even {
+    margin-top: 2px;
+    background-color: #eeeeee;
+    border-width: 1px;
+    border-radius: 10px;
+}
+
+.file-item-detail {
+    margin-top: 0px;
+}
+
+.file-title-name {
+    font-weight: bold;
+    font-size: 15px;
+    padding-left: 5px;
+	cursor: pointer; 
+}
+
+.file-action-icon {
+    horiz-align: right;
+    width:16px;
+    height:16px;
+    margin:5px;
+    vertical-align:middle;
+}
+
+.file-save-icon {
+	display: inline-block; 
+	background-image: url("../images/change_accept.png");
+	background-repeat: no-repeat;
+    width:16px;
+    height:16px;
+    margin:5px;
+    horiz-align: right;
+    vertical-align:middle;
+}
+
+.file-undo-icon {
+	display: inline-block; 
+	background-image: url("../images/change_undo.png");
+	background-repeat: no-repeat;
+    width:16px;
+    height:16px;
+    margin:5px;
+    horiz-align: right;
+    vertical-align:middle;
+}
+
+.file-style-icon {
+    vertical-align:middle;
+    width:16px;
+    height:16px;
+    margin:5px;
+    padding-right: 5px;
+	padding-left: 10px
+    /* display: none; */
+}
+
+.file-del-icon {
+    display: inline-block; 
+	background-image: url("../images/trash_file.png");
+	background-repeat: no-repeat;
+    width:16px;
+    height:16px;
+    margin:5px;
+    vertical-align:middle;
+}
+
+.file-loading-icon {
+	display: inline-block; 
+	background-image: url("../images/loading_black.gif");
+	background-repeat: no-repeat;
+    width:16px;
+    height:16px;
+    margin-bottom:5px;
+	margin-left: 20px; 
+}
+
+.file-name-input {
+    width: 120px;
+    text-align: left;
+}
+

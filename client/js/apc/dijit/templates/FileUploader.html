@@ -1,0 +1,17 @@
+<div>
+    <form id="_uploaderForm" enctype="multipart/form-data">
+        <fieldset>
+            <legend>${title}</legend>
+            <span class="${_css.disclaimer}">${disclaimerText}</span><p/>
+
+            <input type="file" name="uploadedfile" data-dojo-attach-point="_fileSelector" data-dojo-attach-event="onchange:_fileSelected,onclick:_resetFileSelect" accept="${_fileAccept}" /><p/>
+            <div data-dojo-attach-point="_pendingList"></div>
+			
+            <button type="button" data-dojo-attach-event="onclick:_uploadFile" class="${_css.button}">Upload</button>
+            <button type="button" data-dojo-attach-event="onclick:_clearAll" class="${_css.button}">Clear</button>
+
+        </fieldset>
+        <span data-dojo-attach-point="_status" class="${_css.statusMessage}"></span>
+        <div data-dojo-attach-point="_fileList" class="${_css.fileList}"></div>
+    </form>
+</div>

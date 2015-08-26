@@ -1,0 +1,15 @@
+.styleEditor-title {
+	font-weight: bold;
+	height: 20px;
+}
+
+.styleEditor-content {
+	font-size: 10px;
+	width: 300px;
+	height: 150px;
+}
+
+.styleEditor-button {
+	float: right; 
+	margin-right: 10px; 
+}

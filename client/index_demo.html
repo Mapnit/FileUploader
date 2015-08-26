@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <!--The viewport meta tag is used to improve the presentation and behavior of the samples on iOS devices-->
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+    <title>FileUploader demo</title>
+
+    <link rel="stylesheet" href="//js.arcgis.com/3.13/dijit/themes/claro/claro.css">
+    <link rel="stylesheet" href="//js.arcgis.com/3.13/esri/css/esri.css">
+    <link rel="stylesheet" href="css/FileUploader.css">
+	<link rel="stylesheet" href="css/StyleEditor.css">
+    <style>
+        html, body, #map {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #coords {
+            position: absolute;
+            right: 15px;
+            bottom: 5px;
+            color: #000;
+            z-index: 50;
+            font-family: Arial;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        #uploadWidget {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            /*
+            left: 20px;
+            bottom: 20px;
+            height: 200px;
+            width: 300px;
+             */
+            z-index: 50;
+            background: #fff;
+            color: #777;
+            padding: 5px;
+            border: 2px solid #666;
+            -webkit-border-radius: 5px;
+            -moz-border-radius: 5px;
+            border-radius: 5px;
+            font-family: arial;
+            font-size: 0.9em;
+        }
+		
+		#editorWidget {
+			position: absolute;
+            top: 60px;
+            left: 100px;
+            z-index: 50;
+            background: #fff;
+            color: #777;
+            padding: 5px;
+            border: 2px solid #666;
+            -webkit-border-radius: 5px;
+            -moz-border-radius: 5px;
+            border-radius: 5px;
+            font-family: arial;
+            font-size: 0.9em;
+			display: none; 
+		}
+    </style>
+
+    <script>
+        var package_path = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+        var dojoConfig = {
+            parseOnLoad: true,
+            debug: true,
+            packages: [{
+                name: "apc",
+                location: package_path + '/js/apc'
+            }]
+        };
+    </script>
+    <script src="//js.arcgis.com/3.13/"></script>
+    <script>
+        //var username = "kdb086"; 
+		var username = "znh623"; 
+        var map; 
+		
+		var default_symbols = {
+			"point": {
+				"type": "esriSMS",
+				"style": "esriSMSCross",
+				"color": [0,0,255,255],
+				"size": 6,
+				"angle": 0,
+				"xoffset": 0,
+				"yoffset": 0,
+				"outline": {
+					"color": [0,0,255,255],
+					"width": 2
+				}
+			}, 
+			"line": {
+				"type": "esriSLS",
+				"style": "esriSLSDash",
+				"color": [0,0,255,255],
+				"width": 2
+			},
+			"polygon": {
+				"type": "esriSFS",
+				"style": "esriSFSSolid",
+				"color": [0,0,0,75],
+				"outline": {
+					"type": "esriSLS",
+					"style": "esriSLS",
+					"color": [0,0,255,255],
+					"width": 2
+				}
+			}
+		}; 
+
+        require([
+            "esri/map",
+            "esri/dijit/Scalebar",
+            "esri/geometry/webMercatorUtils",
+            "dojo/json", "dojo/dom", "dijit/registry",
+            "apc/dijit/FileUploader", 
+			"apc/dijit/StyleEditor"
+            ], function(
+                Map, Scalebar, WebMercatorUtils, 
+                JSON, dom, registry, 
+                FileUploader, StyleEditor
+            ) {
+
+            map = new Map("map", {
+                basemap: "topo",
+                center: [-97.70, 38.82], // longitude, latitude
+                zoom: 4
+            });
+
+            map.on("load", function () {
+                //after map loads, connect to listen to mouse move & drag events
+                map.on("mouse-move", showCoordinates);
+                map.on("mouse-drag", showCoordinates);
+            });
+
+            //hide the popup if its outside the map's extent
+            map.on("mouse-drag", function (evt) {
+                if (map.infoWindow.isShowing) {
+                    var loc = map.infoWindow.getSelectedFeature().geometry;
+                    if (!map.extent.contains(loc)) {
+                        map.infoWindow.hide();
+                    }
+                }
+            });
+
+            map.on("layers-add-result", function (result) {
+            //map.on("layer-add-result", function (result) {
+                console.log("layer added"); 
+                //actualDataLoaded(result);
+            });
+
+            var scalebar = new Scalebar({
+                map: map,
+                // "dual" displays both miles and kilmometers
+                // "english" is the default, which displays miles
+                // use "metric" for kilometers
+                scalebarUnit: "dual"
+            });
+
+            function showCoordinates(evt) {
+                //the map is in web mercator but display coordinates in geographic (lat, long)
+                var mp = WebMercatorUtils.webMercatorToGeographic(evt.mapPoint);
+                //display mouse coordinates
+                dom.byId("coords").innerHTML = "Lat: " + mp.x.toFixed(3) + "<p>Lon:" + mp.y.toFixed(3);
+            }
+
+            var fileUploader = new FileUploader({
+                map: map, 
+                username: username, 
+				renderingStyles: default_symbols, 
+                uploadServiceUrl: "../services/data_upload.py",
+				uploadTimeout: 60000, /* 1 minutes */
+                dataServiceUrl: "../services/data_librarian.py",
+				dataTimeout: 120000 /* 2 minutes */
+            }, "uploadWidget"); 
+
+            fileUploader.on("load", function(data) {
+                console.log("fileUploader loaded: " + data); 
+                fileUploader.listData(); 
+            }); 
+			
+			fileUploader.on("dataReady", function(data) {
+				console.log("fileUploader data ready: " + data); 
+			});
+			
+			fileUploader.on("dataOnMap", function(data) {
+				console.log("fileUploader data added: " + data); 
+				fileUploader.listData(); 
+			}); 
+			
+			fileUploader.on("dataArchive", function(data) {
+				console.log("fileUploader data archived: " + data); 
+				fileUploader.listData(); 
+			}); 
+			
+			fileUploader.on("dataRename", function(data) {
+				console.log("fileUploader data renamed: " + data); 
+				fileUploader.listData(); 
+			}); 
+
+			fileUploader.on("dataStyle", function(data) {
+				console.log("fileUploader data styled: " + data); 
+				fileUploader.listData(); 
+			}); 
+			
+			fileUploader.on("style-start", function(data) {
+				// open a style editor for editing 
+				var editor = registry.byId("editorWidget"); 
+				if (! editor) {
+					var editor = new StyleEditor({
+						name: data["name"],
+						title: data["title"]||data["name"],
+						content: JSON.stringify(data["drawing_info"]),
+						visible: true
+					}, "editorWidget");
+					
+					editor.on("save", function(data) {
+						fileUploader.styleData(data.name, data.content);
+					});
+					editor.on("cancel", function(data) {
+						this.set("visible", false); 
+					}); 
+					
+					editor.startup(); 
+				} else {
+					editor.set("name", data["name"]);
+					editor.set("title", data["title"]||data["name"]);
+					editor.set("content", JSON.stringify(data["drawing_info"]));
+					
+					editor.set("visible", true); 
+				}
+				
+				console.log("start editing style");
+			}); 
+			
+			fileUploader.on("clear", function(data) {
+				console.log("fileUploader cleared "); 
+				fileUploader.listData(); 
+			}); 
+
+            fileUploader.startup();
+
+        }); 
+
+    </script>
+</head>
+<body class="claro esri">
+    <div id="map">
+        <div id="uploadWidget"></div>
+    </div>
+    <span id="coords"></span>
+	<div id="editorWidget"></div>
+</body>
+</html>
