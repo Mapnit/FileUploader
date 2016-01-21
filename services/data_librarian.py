@@ -46,6 +46,298 @@ def _init_app(config_file):
         del xml_file
     return
 
+#
+# list all users shared on a given file with a given user
+# - require cx_Oracle
+#
+def _list_shared_users_ora(username, filename, data_filter=None):
+    None
+
+#
+# list all users shared on a given file with a given user
+# - require sqlite
+#
+def _list_shared_users_lite(username, filename, data_filter=None):
+    if 'db_conn' not in config.keys():
+        return None
+    if 'shared_user_list' not in config.keys():
+        return None
+
+    try:
+        import sqlite3 as sqlite
+        db_conn = None
+        row_cur = None
+
+        count = 0
+        print '['
+        try:
+            logging.debug("list all shared users on [%s] [%s]"%(username, filename))
+            db_conn = sqlite.connect(config['db_conn'])
+            row_cur = db_conn.cursor()
+            row_cur.execute(config['shared_user_list'], {'owner': username, 'src_file_path': filename})
+            for row in row_cur:
+                shared_user = row[0]
+                shared_date = row[1]
+
+                if count > 0:
+                    print ','
+                print '''{"shared_user":"%s", "shared_date":"%s"}''' \
+                      % (shared_user, shared_date)
+                count += 1
+        except sqlite.DatabaseError as e:
+            logging.error('error in list_shared_users: ' + str(e))
+            return None
+        finally:
+            print ']'
+            row = None
+            if row_cur is not None:
+                row_cur.close()
+            if db_conn is not None:
+                db_conn.close()
+
+    except Exception as e:
+        logging.error('error in list_shared_users: ' + str(e))
+        return None
+
+
+def list_shared_users(username, filename, data_filter=None):
+    if config["db_provider"] == "oracle":
+        return _list_shared_users_ora(username, filename, data_filter)
+    else:  # default
+        return _list_shared_users_lite(username, filename, data_filter)
+
+
+#
+# list all data files shared to a given user
+# - require cx_Oracle
+#
+def _list_shared_data_ora(username, data_filter=None):
+    None
+
+#
+# list all data files shared to a given user
+# - require sqlite
+#
+def _list_shared_data_lite(username, data_filter=None):
+    if 'db_conn' not in config.keys():
+        return None
+    if 'shared_data_list' not in config.keys():
+        return None
+
+    try:
+        import sqlite3 as sqlite
+        db_conn = None
+        row_cur = None
+
+        count = 0
+        print '['
+        try:
+            logging.debug("list all data files shared to " + username)
+            db_conn = sqlite.connect(config['db_conn'])
+            row_cur = db_conn.cursor()
+            row_cur.execute(config['shared_data_list'], {'shared_user': username})
+            for row in row_cur:
+                owner = row[0]
+                src_file_path = row[1]
+                data_name = row[2]
+                data_size = row[3]
+                last_modified = row[4]
+                last_uploaded = row[5]
+                upload_status = row[6]
+                total_row_count = 0 if row[7] is None else row[7]
+                cached_row_count = 0 if row[8] is None else row[8]
+                drawing_info = "null" if (row[9] is None or len(row[9].strip()) == 0) else row[9]
+                shared_date = row[10]
+
+                if count > 0:
+                    print ','
+                print '''{"owner":"%s", "src_file_path":"%s", "data_name":"%s", "size":%s, "last_modified":"%s", "last_uploaded":"%s",
+                        "upload_status":"%s", "total_row_count":%s, "cached_row_count":%s, "drawing_info":%s, "shared_date":"%s"}''' \
+                      % (owner, src_file_path, data_name, data_size, last_modified, last_uploaded,
+                         upload_status, total_row_count, cached_row_count, drawing_info, shared_date)
+                count += 1
+        except sqlite.DatabaseError as e:
+            logging.error('error in list_shared_data: ' + str(e))
+            return None
+        finally:
+            print ']'
+            row = None
+            if row_cur is not None:
+                row_cur.close()
+            if db_conn is not None:
+                db_conn.close()
+
+    except Exception as e:
+        logging.error('error in list_shared_data: ' + str(e))
+        return None
+
+
+def list_shared_data(username, data_filter=None):
+    if config["db_provider"] == "oracle":
+        return _list_shared_data_ora(username, data_filter)
+    else:  # default
+        return _list_shared_data_lite(username, data_filter)
+
+
+#
+# add a share entry into database
+# - require cx_Oracle
+#
+def _share_data_ora(username, filename, shared_user):
+    None
+
+#
+# add a share entry into database
+# - require sqlite
+#
+def _share_data_lite(username, filename, shared_user):
+    if 'db_conn' not in config.keys():
+        return False
+    if 'shared_insert' not in config.keys():
+        return False
+
+    try:
+        import sqlite3 as sqlite
+        db_conn = None
+        row_cur = None
+        try:
+            db_conn = sqlite.connect(config['db_conn'])
+            row_cur = db_conn.cursor()
+            # insert a shared entry
+            row_cur.execute(config['shared_insert'], {'owner': username,
+                                                      'src_file_path': filename,
+                                                      'shared_user': shared_user,
+                                                      'shared_date': datetime.datetime.now()})
+            db_conn.commit()
+            logging.info("share [%s] [%s] with [%s] "
+                         % (username, filename, shared_user))
+            return True
+        except sqlite.DatabaseError as e:
+            logging.error('error in share_data: ' + str(e))
+            return False
+        finally:
+            if row_cur is not None:
+                row_cur.close()
+            if db_conn is not None:
+                db_conn.close()
+
+    except Exception as e:
+        logging.error('error in share_data: ' + str(e))
+        return False
+
+
+def share_data(username, filename, shared_user):
+    if config["db_provider"] == "oracle":
+        return _share_data_ora(username, filename, shared_user)
+    else:  # default
+        return _share_data_lite(username, filename, shared_user)
+
+
+#
+# delete a share entry from database
+# - require cx_Oracle
+#
+def _revoke_share_ora(username, filename, shared_user):
+    None
+
+#
+# delete a share entry from database
+# - require sqlite
+#
+def _revoke_share_lite(username, filename, shared_user):
+    if 'db_conn' not in config.keys():
+        return False
+    if 'shared_delete' not in config.keys():
+        return False
+
+    try:
+        import sqlite3 as sqlite
+        db_conn = None
+        row_cur = None
+        try:
+            db_conn = sqlite.connect(config['db_conn'])
+            row_cur = db_conn.cursor()
+            # insert a shared entry
+            row_cur.execute(config['shared_delete'], {'owner': username,
+                                                      'src_file_path': filename,
+                                                      'shared_user': shared_user})
+            db_conn.commit()
+            logging.info("remove share of [%s] [%s] from [%s] "
+                         % (username, filename, shared_user))
+            return True
+        except sqlite.DatabaseError as e:
+            logging.error('error in revoke_share: ' + str(e))
+            return False
+        finally:
+            if row_cur is not None:
+                row_cur.close()
+            if db_conn is not None:
+                db_conn.close()
+
+    except Exception as e:
+        logging.error('error in revoke_share: ' + str(e))
+        return False
+
+
+def revoke_share(username, filename, shared_user):
+    if config["db_provider"] == "oracle":
+        return _revoke_share_ora(username, filename, shared_user)
+    else:  # default
+        return _revoke_share_lite(username, filename, shared_user)
+
+
+#
+# delete all share entries on a given file from database
+# - require cx_Oracle
+#
+def _revoke_all_shares_ora(username, filename):
+    None
+
+#
+# delete all share entries on a given file from database
+# - require sqlite
+#
+def _revoke_all_shares_lite(username, filename):
+    if 'db_conn' not in config.keys():
+        return False
+    if 'shared_delete_all' not in config.keys():
+        return False
+
+    try:
+        import sqlite3 as sqlite
+        db_conn = None
+        row_cur = None
+        try:
+            db_conn = sqlite.connect(config['db_conn'])
+            row_cur = db_conn.cursor()
+            # insert a shared entry
+            row_cur.execute(config['shared_delete_all'], {'owner': username,
+                                                          'src_file_path': filename})
+            db_conn.commit()
+            logging.info("remove share of [%s] [%s] from all users "
+                         % (username, filename))
+            return True
+        except sqlite.DatabaseError as e:
+            logging.error('error in revoke_all_shares: ' + str(e))
+            return False
+        finally:
+            if row_cur is not None:
+                row_cur.close()
+            if db_conn is not None:
+                db_conn.close()
+
+    except Exception as e:
+        logging.error('error in revoke_all_shares: ' + str(e))
+        return False
+
+
+def revoke_all_shares(username, filename):
+    if config["db_provider"] == "oracle":
+        return _revoke_all_shares_ora(username, filename)
+    else:  # default
+        return _revoke_all_shares_lite(username, filename)
+
+
 
 #
 # add the cache registry into the database
