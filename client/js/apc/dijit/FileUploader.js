@@ -652,7 +652,7 @@ define([
 					itemHtml += ("</td>");
 
 					itemHtml += ("<td>");
-					itemHtml += ("<span id='file-name-" + i + "' class='file-title-name' userData='" + item_value + "'>" + item["data_name"] + "</span>");
+					itemHtml += ("<span id='file-name-" + i + "' class='file-title-name' title='" + item_value + "' userData='" + item_value + "'>" + item["data_name"] + "</span>");
 					itemHtml += ("</td>");
 
 					itemHtml += ("<td align='right'>");
@@ -710,7 +710,7 @@ define([
 					itemHtml += ("</td>");
 
 					itemHtml += ("<td>");
-					itemHtml += ("<span id='file-name-" + i + "' class='file-title-name' userData='" + item_value + "'>" + item["data_name"] + "</span>");
+					itemHtml += ("<span id='file-name-" + i + "' class='file-title-name' title='" + item_value + "' userData='" + item_value + "'>" + item["data_name"] + "</span>");
 					itemHtml += ("</td>");
 
 					itemHtml += ("<td align='right'>");
