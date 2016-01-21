@@ -1,8 +1,9 @@
 import os, datetime, re, logging, random
 import xml.etree.cElementTree as Et
+import unittest
 
 # app deployment config
-DEPLOY_ROOT = r"C:\inetpub\wwwroot\chen_test\services"
+DEPLOY_ROOT = r"C:\Users\kdb086\Projects\CgiPythonProject"
 
 # app runtime config
 CONFIG_FILE = os.path.join(DEPLOY_ROOT, "web.config")
@@ -20,6 +21,7 @@ KML_SHP_TYPES = ['Points', 'Polylines', 'Polygons']
 logging.basicConfig(filename=os.path.join(os.path.join(DEPLOY_ROOT, "logs"), "data_librarian.log"),
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                     level=logging.DEBUG)
+
 
 # global config variable
 config = {}
@@ -146,11 +148,14 @@ def _register_cache_lite(username, filename, cache_file_path, data_name, status,
         return False
 
 
-def _register_cache(username, filename, cache_file_path, data_name, status='READY', total_row_count=0, cached_row_count=0):
+def _register_cache(username, filename, cache_file_path, data_name,
+                    status='READY', total_row_count=0, cached_row_count=0):
     if config["db_provider"] == "oracle":
-        return _register_cache_ora(username, filename, cache_file_path, data_name, status, total_row_count, cached_row_count)
+        return _register_cache_ora(username, filename, cache_file_path, data_name,
+                                   status, total_row_count, cached_row_count)
     else:  # default
-        return _register_cache_lite(username, filename, cache_file_path, data_name, status, total_row_count, cached_row_count)
+        return _register_cache_lite(username, filename, cache_file_path, data_name,
+                                    status, total_row_count, cached_row_count)
 
 
 #
@@ -387,7 +392,7 @@ def _archive_data_file(username, filename):
         logging.warn('no such data file [%s]' % filename)
         # print '{"error": "no such data file [%s]", "scope":"env"}' % filename
         return None
-    
+
     else:
         archive_folder_path = os.path.join(user_folder, ARCHIVE_FOLDER)
         if not os.path.exists(archive_folder_path):
@@ -458,7 +463,6 @@ def _archive_data_ora(username, filename, archive_file_path, retain_style=False)
 
 
 def _archive_data_lite(username, filename, archive_file_path, retain_style=False):
-
     if 'db_conn' not in config.keys():
         return False
     if 'data_archive' not in config.keys():
@@ -961,7 +965,8 @@ def _prepare_data(username, filename):
         if carto_styles_string is None:
             carto_styles_array.append(_get_default_style(data_despt.shapeType))
         # limit data by count
-        stg_data_path, total_row_count, filtered_row_count = _filter_data_by_count(stg_data_path, data_despt.OIDFieldName, stg_folder)
+        stg_data_path, total_row_count, filtered_row_count = \
+            _filter_data_by_count(stg_data_path, data_despt.OIDFieldName, stg_folder)
         # transform or project to the standard spatial ref
         src_spatial_ref = data_despt.spatialReference
         if src_spatial_ref.name != output_spatial_ref.name:
@@ -992,7 +997,8 @@ def _prepare_data(username, filename):
         if carto_styles_string is None:
             carto_styles_array.append(_get_default_style(data_despt.shapeType))
         # limit data by count
-        stg_data_path, total_row_count, filtered_row_count = _filter_data_by_count(stg_data_path, data_despt.OIDFieldName, stg_fgdb_path)
+        stg_data_path, total_row_count, filtered_row_count = \
+            _filter_data_by_count(stg_data_path, data_despt.OIDFieldName, stg_fgdb_path)
         # transform or project to the standard spatial ref
         src_spatial_ref = data_despt.spatialReference
         if src_spatial_ref.name != output_spatial_ref.name:
@@ -1026,7 +1032,8 @@ def _prepare_data(username, filename):
         if carto_styles_string is None:
             carto_styles_array.append(_get_default_style(data_despt.shapeType))
         # limit data by count
-        stg_data_path, total_row_count, filtered_row_count = _filter_data_by_count(stg_data_path, data_despt.OIDFieldName, stg_fgdb_path)
+        stg_data_path, total_row_count, filtered_row_count = \
+            _filter_data_by_count(stg_data_path, data_despt.OIDFieldName, stg_fgdb_path)
         # transform or project to the standard spatial ref
         src_spatial_ref = data_despt.spatialReference
         if src_spatial_ref.name != output_spatial_ref.name:
@@ -1062,7 +1069,8 @@ def _prepare_data(username, filename):
                     if carto_styles_string is None:
                         carto_styles_array.append(_get_default_style(data_despt.shapeType, shp_type))
                     # limit data by count
-                    stg_data_path, total_count, filtered_count = _filter_data_by_count(stg_data_path, data_despt.OIDFieldName, stg_fgdb_path, shp_type)
+                    stg_data_path, total_count, filtered_count = \
+                        _filter_data_by_count(stg_data_path, data_despt.OIDFieldName, stg_fgdb_path, shp_type)
                     # transform or project to the standard spatial ref
                     src_spatial_ref = data_despt.spatialReference
                     if src_spatial_ref.name != output_spatial_ref.name:
@@ -1161,7 +1169,7 @@ def list_files(username, data_filter=None):
 # list all data files belonging to a given user
 # (from data registry table in database)
 #
-def list_data_ora(username, data_filter=None):
+def _list_data_ora(username, data_filter=None):
     if 'db_conn' not in config.keys():
         return None
     if 'data_list' not in config.keys():
@@ -1193,9 +1201,11 @@ def list_data_ora(username, data_filter=None):
 
                 if count > 0:
                     print ','
-                print '{"src_file_path":"%s", "data_name":"%s", "size":%s, "last_modified":"%s", "last_uploaded":"%s", "upload_status":"%s", "total_row_count":%s, "cached_row_count":%s, "drawing_info":%s}' \
+                print '''{"src_file_path":"%s", "data_name":"%s", "size":%s, "last_modified":"%s", "last_uploaded":"%s",
+                          "upload_status":"%s", "total_row_count":%s, "cached_row_count":%s, "drawing_info":%s}''' \
                       % (src_file_path, data_name, data_size, last_modified.strftime("%Y-%m-%d %H:%M:%S"),
-                         last_uploaded.strftime("%Y-%m-%d %H:%M:%S"), upload_status, total_row_count, cached_row_count, drawing_info)
+                         last_uploaded.strftime("%Y-%m-%d %H:%M:%S"),
+                         upload_status, total_row_count, cached_row_count, drawing_info)
                 count += 1
         except cx_Oracle.DatabaseError as e:
             logging.error('error in list_data: ' + str(e))
@@ -1213,7 +1223,7 @@ def list_data_ora(username, data_filter=None):
         return None
 
 
-def list_data_lite(username, data_filter=None):
+def _list_data_lite(username, data_filter=None):
     if 'db_conn' not in config.keys():
         return None
     if 'data_list' not in config.keys():
@@ -1244,8 +1254,10 @@ def list_data_lite(username, data_filter=None):
 
                 if count > 0:
                     print ','
-                print '{"src_file_path":"%s", "data_name":"%s", "size":%s, "last_modified":"%s", "last_uploaded":"%s", "upload_status":"%s", "total_row_count":%s, "cached_row_count":%s, "drawing_info":%s}' \
-                      % (src_file_path, data_name, data_size, last_modified, last_uploaded, upload_status, total_row_count, cached_row_count, drawing_info)
+                print '''{"src_file_path":"%s", "data_name":"%s", "size":%s, "last_modified":"%s", "last_uploaded":"%s",
+                        "upload_status":"%s", "total_row_count":%s, "cached_row_count":%s, "drawing_info":%s}''' \
+                      % (src_file_path, data_name, data_size, last_modified, last_uploaded,
+                         upload_status, total_row_count, cached_row_count, drawing_info)
                 count += 1
         except sqlite.DatabaseError as e:
             logging.error('error in list_data: ' + str(e))
@@ -1265,9 +1277,9 @@ def list_data_lite(username, data_filter=None):
 
 def list_data(username, data_filter=None):
     if config["db_provider"] == "oracle":
-        return list_data_ora(username, data_filter)
+        return _list_data_ora(username, data_filter)
     else:  # default
-        return list_data_lite(username, data_filter)
+        return _list_data_lite(username, data_filter)
 
 
 #
@@ -1355,6 +1367,36 @@ def response():
             if archive_data(username, filename):
                 print '{"status": "success", "scope":"response", "filename":"%s"}' % filename
 
+        elif action == 'list_shared_data':
+            logging.info("execute: list all shared files satisfying filters [%s] " % str(filters))
+            list_shared_data(username, filters)
+
+        elif action == 'list_shared_users':
+            if 'filename' in arguments.keys() and arguments['filename'].value is not None:
+                filename = str(arguments['filename'].value)
+            else:
+                print '{"error": "unknown file name", "scope":"request"}'
+                return
+
+            if list_shared_users(username, filename):
+                print '{"status": "success", "scope":"response", "filename":"%s"}' % filename
+
+        elif action == 'share':
+            if 'filename' in arguments.keys() and arguments['filename'].value is not None:
+                filename = str(arguments['filename'].value)
+            else:
+                print '{"error": "unknown file name", "scope":"request"}'
+                return
+
+            if 'shared_user' in arguments.keys() and arguments['shared_user'].value is not None:
+                shared_user = arguments['shared_user'].value
+            else:
+                print '{"error": "unknown user to share", "scope":"request"}'
+                return
+
+            if share_data(username, filename, shared_user):
+                print '{"status": "success", "scope":"response", "filename":"%s"}' % filename
+
         elif action == "status":
             if 'filename' in arguments.keys() and arguments['filename'].value is not None:
                 filename = str(arguments['filename'].value)
@@ -1372,198 +1414,238 @@ def response():
     return
 
 
-def _test_list_files():
+#
+# Test Cases
+#
+class TestDataLibrarian(unittest.TestCase):
 
-    print "***** list_files('imaps') *****"
-    list_files("imaps")
-    print "##### list_files('imaps') #####"
+    def test_list_files(self):
 
-    print "***** list_files('kdb086') *****"
-    list_files("kdb086")
-    print "##### list_files('kdb086') #####"
+        print "***** list_files('imaps') *****"
+        list_files("imaps")
+        print "##### list_files('imaps') #####"
 
+        print "***** list_files('kdb086') *****"
+        list_files("kdb086")
+        print "##### list_files('kdb086') #####"
 
-def _test_list_data():
+    def test_list_data(self):
 
-    print "***** list_data('imaps') *****"
-    list_data("imaps")
-    print "##### list_data('imaps') #####"
+        print "***** list_data('imaps') *****"
+        list_data("imaps")
+        print "##### list_data('imaps') #####"
 
-    print "***** list_data('kdb086') *****"
-    list_data("kdb086")
-    print "##### list_data('kdb086') #####"
+        print "***** list_data('kdb086') *****"
+        list_data("kdb086")
+        print "##### list_data('kdb086') #####"
 
+    def test_cache_registry(self):
 
-def _test_cache_registry():
+        print "***** _register_cache('imaps') *****"
+        _register_cache("imaps", "Wells_Active.csv", r"cache\Wells_Active.json", "Wells_Active")
+        print "##### _register_cache('imaps') #####"
 
-    print "***** _register_cache('imaps') *****"
-    _register_cache("imaps", "Wells_Active.csv", r"cache\Wells_Active.json", "Wells_Active")
-    print "##### _register_cache('imaps') #####"
+        print "***** _is_cached('imaps') *****"
+        result = _get_cache("imaps", "Wells_Active.csv")
+        assert result is None
+        print "##### _is_cached('imaps') #####"
 
-    print "***** _is_cached('imaps') *****"
-    result = _get_cache("imaps", "Wells_Active.csv")
-    assert result is None
-    print "##### _is_cached('imaps') #####"
+        print "***** _register_cache('kdb086') *****"
+        _register_cache("kdb086", "earthquakes.csv", r"cache\earthquakes.json", "earthquakes")
+        print "##### _register_cache('kdb086') #####"
 
-    print "***** _register_cache('kdb086') *****"
-    _register_cache("kdb086", "earthquakes.csv", r"cache\earthquakes.json", "earthquakes")
-    print "##### _register_cache('kdb086') #####"
+        print "***** _is_cached('kdb086') *****"
+        result = _get_cache("kdb086", "earthquakes.csv")
+        # assert result == r'C:\Users\kdb086\Projects\CgiPythonProject\data_stage\kdb086\cache\earthquakes.json'
+        assert result is None
+        print "##### _is_cached('kdb086') #####"
 
-    print "***** _is_cached('kdb086') *****"
-    result = _get_cache("kdb086", "earthquakes.csv")
-    # assert result == r'C:\Users\kdb086\Projects\CgiPythonProject\data_stage\kdb086\cache\earthquakes.json'
-    assert result is None
-    print "##### _is_cached('kdb086') #####"
+        print "***** _is_cached('imaps') *****"
+        result = _get_cache("imaps", "wells.csv")
+        assert result is None
+        print "##### _is_cached('imaps') #####"
 
-    print "***** _is_cached('imaps') *****"
-    result = _get_cache("imaps", "wells.csv")
-    assert result is None
-    print "##### _is_cached('imaps') #####"
+    def test_get_data_imap(self):
 
+        print "***** get_data('imaps', 'Wells_Active!^ - Copy.csv') *****"
+        get_data("imaps", "Wells_Active!^ - Copy.csv")
+        print "##### get_data('imaps', 'Wells_Active!^ - Copy.csv') #####"
 
-def _test_get_data_imap():
+        print "***** get_data('imaps', 'Wells_Active.csv') *****"
+        get_data("imaps", "Wells_Active.csv")
+        print "##### get_data('imaps', 'Wells_Active.csv') #####"
 
-    print "***** get_data('imaps', 'Wells_Active!^ - Copy.csv') *****"
-    get_data("imaps", "Wells_Active!^ - Copy.csv")
-    print "##### get_data('imaps', 'Wells_Active!^ - Copy.csv') #####"
+        print "***** get_data('imaps', 'DoesNotWork.zip') *****"
+        get_data("imaps", "DoesNotWork.zip")
+        print "##### get_data('imaps', 'DoesNotWork.zip') #####"
 
-    print "***** get_data('imaps', 'Wells_Active.csv') *****"
-    get_data("imaps", "Wells_Active.csv")
-    print "##### get_data('imaps', 'Wells_Active.csv') #####"
+        print "***** get_data('imaps', 'APC(DoesNotWork).zip') *****"
+        get_data("imaps", "APC(DoesNotWork).zip")
+        print "##### get_data('imaps', 'APC(DoesNotWork).zip') #####"
 
-    print "***** get_data('imaps', 'DoesNotWork.zip') *****"
-    get_data("imaps", "DoesNotWork.zip")
-    print "##### get_data('imaps', 'DoesNotWork.zip') #####"
+        print "***** get_data('imaps', 'wells.zip') *****"
+        get_data("imaps", "wells.zip")
+        print "##### get_data('imaps', 'wells.zip') #####"
 
-    print "***** get_data('imaps', 'APC(DoesNotWork).zip') *****"
-    get_data("imaps", "APC(DoesNotWork).zip")
-    print "##### get_data('imaps', 'APC(DoesNotWork).zip') #####"
+        print "***** get_data('imaps', 'test.gpx') *****"
+        get_data("imaps", "test.gpx")
+        print "##### get_data('imaps', 'test.gpx') #####"
 
-    print "***** get_data('imaps', 'wells.zip') *****"
-    get_data("imaps", "wells.zip")
-    print "##### get_data('imaps', 'wells.zip') #####"
+        print "***** get_data('imaps', 'KML_Samples.kml') *****"
+        get_data("imaps", "KML_Samples.kml")
+        print "##### get_data('imaps', 'KML_Samples.kml') #####"
 
-    print "***** get_data('imaps', 'test.gpx') *****"
-    get_data("imaps", "test.gpx")
-    print "##### get_data('imaps', 'test.gpx') #####"
+    def test_get_data_kdb086(self):
 
-    print "***** get_data('imaps', 'KML_Samples.kml') *****"
-    get_data("imaps", "KML_Samples.kml")
-    print "##### get_data('imaps', 'KML_Samples.kml') #####"
+        print "***** get_data('kdb086', 'earthquakes.csv') *****"
+        get_data("kdb086", "earthquakes.csv")
+        print "##### get_data('kdb086', 'earthquakes.csv') #####"
 
+        print "***** get_data('kdb086', 'testShpFile.zip') *****"
+        get_data("kdb086", "testShpFile.zip")
+        print "##### get_data('kdb086', 'testShpFile.zip') #####"
 
-def _test_get_data_kdb086():
+        print "***** get_data('kdb086', 'KFC__62__2015.gpx') *****"
+        get_data("kdb086", "KFC__62__2015.gpx")
+        print "##### get_data('kdb086', 'KFC__62__2015.gpx') #####"
 
-    print "***** get_data('kdb086', 'earthquakes.csv') *****"
-    get_data("kdb086", "earthquakes.csv")
-    print "##### get_data('kdb086', 'earthquakes.csv') #####"
+        print "***** get_data('kdb086', 'KML_Samples.kml') *****"
+        get_data("kdb086", "KML_Samples.kml")
+        print "##### get_data('kdb086', 'KML_Samples.kml') #####"
 
-    print "***** get_data('kdb086', 'testShpFile.zip') *****"
-    get_data("kdb086", "testShpFile.zip")
-    print "##### get_data('kdb086', 'testShpFile.zip') #####"
+        print "***** get_data('kdb086', 'HighSchools.kmz') *****"
+        get_data("kdb086", "HighSchools.kmz")
+        print "##### get_data('kdb086', 'HighSchools.kmz') #####"
 
-    print "***** get_data('kdb086', 'KFC__62__2015.gpx') *****"
-    get_data("kdb086", "KFC__62__2015.gpx")
-    print "##### get_data('kdb086', 'KFC__62__2015.gpx') #####"
+    def test_get_data_kml(self):
 
-    print "***** get_data('kdb086', 'KML_Samples.kml') *****"
-    get_data("kdb086", "KML_Samples.kml")
-    print "##### get_data('kdb086', 'KML_Samples.kml') #####"
+        print "***** get_data('kdb086', 'HighSchools.kmz') *****"
+        get_data("kdb086", "HighSchools.kmz")
+        print "##### get_data('kdb086', 'HighSchools.kmz') #####"
 
-    print "***** get_data('kdb086', 'HighSchools.kmz') *****"
-    get_data("kdb086", "HighSchools.kmz")
-    print "##### get_data('kdb086', 'HighSchools.kmz') #####"
+        print "***** get_data('kdb086', 'KML_Samples.kml') *****"
+        get_data("kdb086", "KML_Samples.kml")
+        print "##### get_data('kdb086', 'KML_Samples.kml') #####"
 
+    def test_get_data_big(self):
 
-def _test_get_data_kml():
+        print "***** get_data('kdb086', 'APC_Equipment_Less1.zip') *****"
+        get_data("kdb086", "APC_Equipment_Less1.zip")
+        print "##### get_data('kdb086', 'APC_Equipment_Less1.zip') #####"
 
-    print "***** get_data('kdb086', 'HighSchools.kmz') *****"
-    get_data("kdb086", "HighSchools.kmz")
-    print "##### get_data('kdb086', 'HighSchools.kmz') #####"
+        print "***** get_data('kdb086', 'APC_Equipment_Less2.zip') *****"
+        get_data("kdb086", "APC_Equipment_Less2.zip")
+        print "##### get_data('kdb086', 'APC_Equipment_Less2.zip') #####"
 
-    print "***** get_data('kdb086', 'KML_Samples.kml') *****"
-    get_data("kdb086", "KML_Samples.kml")
-    print "##### get_data('kdb086', 'KML_Samples.kml') #####"
+        print "***** get_data('kdb086', 'APC_Equipment.zip') *****"
+        get_data("kdb086", "APC_Equipment.zip")
+        print "##### get_data('kdb086', 'APC_Equipment.zip') #####"
 
+    def test_get_status(self):
 
-def _test_get_data_big():
+        print "***** get_status('kdb086', 'KML_Samples.kml') *****"
+        get_status("kdb086", "KML_Samples.kml")
+        print "##### get_status('kdb086', 'KML_Samples.kml') #####"
 
-    print "***** get_data('kdb086', 'APC_Equipment_Less1.zip') *****"
-    get_data("kdb086", "APC_Equipment_Less1.zip")
-    print "##### get_data('kdb086', 'APC_Equipment_Less1.zip') #####"
+        print "***** get_status('kdb086', 'earthquakes.csv') *****"
+        get_status("kdb086", "earthquakes.csv")
+        print "##### get_status('kdb086', 'earthquakes.csv') #####"
 
-    print "***** get_data('kdb086', 'APC_Equipment_Less2.zip') *****"
-    get_data("kdb086", "APC_Equipment_Less2.zip")
-    print "##### get_data('kdb086', 'APC_Equipment_Less2.zip') #####"
+    def _test_archive_data(self):
 
-    print "***** get_data('kdb086', 'APC_Equipment.zip') *****"
-    get_data("kdb086", "APC_Equipment.zip")
-    print "##### get_data('kdb086', 'APC_Equipment.zip') #####"
+        print "***** get_data('kdb086', 'HighSchools.kmz') *****"
+        get_data("kdb086", "HighSchools.kmz")
+        print "##### get_data('kdb086', 'HighSchools.kmz') #####"
 
+        print "***** archive_data('kdb086', 'HighSchools.kmz') *****"
+        archive_data("kdb086", "HighSchools.kmz")
+        print "##### archive_data('kdb086', 'HighSchools.kmz') #####"
 
-def _test_get_status():
+        print "***** get_data('kdb086', 'HighSchools.kmz') *****"
+        get_data("kdb086", "HighSchools.kmz")
+        print "##### get_data('kdb086', 'HighSchools.kmz') #####"
 
-    print "***** get_status('kdb086', 'KML_Samples.kml') *****"
-    get_status("kdb086", "KML_Samples.kml")
-    print "##### get_status('kdb086', 'KML_Samples.kml') #####"
+    def _test_rename_data(self):
 
-    print "***** get_status('kdb086', 'earthquakes.csv') *****"
-    get_status("kdb086", "earthquakes.csv")
-    print "##### get_status('kdb086', 'earthquakes.csv') #####"
+        print "***** list_data('imaps') *****"
+        list_data("imaps")
+        print "##### list_data('imaps') #####"
 
+        print "***** rename_data('imaps', 'DoesNotWork.zip', 'Worked actually') *****"
+        rename_data("imaps", "DoesNotWork.zip", "Worked actually")
+        print "##### rename_data('imaps', 'DoesNotWork.zip', 'Worked actually') #####"
 
-def _test_archive_data():
+        print "***** list_data('imaps') *****"
+        list_data("imaps")
+        print "##### list_data('imaps') #####"
 
-    print "***** get_data('kdb086', 'HighSchools.kmz') *****"
-    get_data("kdb086", "HighSchools.kmz")
-    print "##### get_data('kdb086', 'HighSchools.kmz') #####"
+    def _test_style_data(self):
 
-    print "***** archive_data('kdb086', 'HighSchools.kmz') *****"
-    archive_data("kdb086", "HighSchools.kmz")
-    print "##### archive_data('kdb086', 'HighSchools.kmz') #####"
+        print "***** list_data('kdb086') *****"
+        list_data("kdb086")
+        print "##### list_data('kdb086') #####"
 
-    print "***** get_data('kdb086', 'HighSchools.kmz') *****"
-    get_data("kdb086", "HighSchools.kmz")
-    print "##### get_data('kdb086', 'HighSchools.kmz') #####"
+        print "***** get_style('kdb086', 'earthquakes.csv') *****"
+        get_style('kdb086', 'earthquakes.csv')
+        print "##### get_style('kdb086', 'earthquakes.csv') #####"
 
+        print "***** set_style('kdb086', 'earthquakes.csv', 'new drawing info') *****"
+        set_style('kdb086', 'earthquakes.csv', 'new drawing info')
+        print "##### set_style('kdb086', 'earthquakes.csv', 'new drawing info') #####"
 
-def _test_rename_data():
+        print "***** get_style('kdb086', 'earthquakes.csv') *****"
+        get_style('kdb086', 'earthquakes.csv')
+        print "##### get_style('kdb086', 'earthquakes.csv') #####"
 
-    print "***** list_data('imaps') *****"
-    list_data("imaps")
-    print "##### list_data('imaps') #####"
+        print "***** list_data('kdb086') *****"
+        list_data("kdb086")
+        print "##### list_data('kdb086') #####"
 
-    print "***** rename_data('imaps', 'DoesNotWork.zip', 'Worked actually') *****"
-    rename_data("imaps", "DoesNotWork.zip", "Worked actually")
-    print "##### rename_data('imaps', 'DoesNotWork.zip', 'Worked actually') #####"
+    def test_share_data(self):
 
-    print "***** list_data('imaps') *****"
-    list_data("imaps")
-    print "##### list_data('imaps') #####"
+        print "***** list_shared_data('zhr101') *****"
+        list_shared_data("zhr101")
+        print "##### list_shared_data('zhr101') #####"
 
+        print "***** share_data('kdb086', 'earthquakes.csv', 'zhr101') *****"
+        share_data('kdb086', 'earthquakes.csv', 'zhr101')
+        print "##### share_data('kdb086', 'earthquakes.csv', 'zhr101') #####"
 
-def _test_style_data():
+        print "***** share_data('kdb086', 'APC_Equipment.zip', 'zhr101') *****"
+        share_data('kdb086', 'APC_Equipment.zip', 'zhr101')
+        print "##### share_data('kdb086', 'APC_Equipment.zip', 'zhr101') #####"
 
-    print "***** list_data('kdb086') *****"
-    list_data("kdb086")
-    print "##### list_data('kdb086') #####"
+        print "***** share_data('kdb086', 'APC_Equipment.zip', 'wqx202') *****"
+        share_data('kdb086', 'APC_Equipment.zip', 'wqx202')
+        print "##### share_data('kdb086', 'APC_Equipment.zip', 'wqx202') #####"
 
-    print "***** get_style('kdb086', 'earthquakes.csv') *****"
-    get_style('kdb086', 'earthquakes.csv')
-    print "##### get_style('kdb086', 'earthquakes.csv') #####"
+        print "***** list_shared_users('kdb086', 'earthquakes.csv') *****"
+        list_shared_users('kdb086', 'earthquakes.csv')
+        print "##### list_shared_users('kdb086', 'earthquakes.csv') #####"
 
-    print "***** set_style('kdb086', 'earthquakes.csv', 'new drawing info') *****"
-    set_style('kdb086', 'earthquakes.csv', 'new drawing info')
-    print "##### set_style('kdb086', 'earthquakes.csv', 'new drawing info') #####"
+        print "***** list_shared_data('zhr101') *****"
+        list_shared_data("zhr101")
+        print "##### list_shared_data('zhr101') #####"
 
-    print "***** get_style('kdb086', 'earthquakes.csv') *****"
-    get_style('kdb086', 'earthquakes.csv')
-    print "##### get_style('kdb086', 'earthquakes.csv') #####"
+        print "***** list_shared_users('kdb086', 'APC_Equipment.zip') *****"
+        list_shared_users('kdb086', 'APC_Equipment.zip')
+        print "##### list_shared_users('kdb086', 'APC_Equipment.zip') #####"
 
-    print "***** list_data('kdb086') *****"
-    list_data("kdb086")
-    print "##### list_data('kdb086') #####"
+        print "***** revoke_share('kdb086', 'earthquakes.csv', 'zhr101') *****"
+        revoke_share('kdb086', 'earthquakes.csv', 'zhr101')
+        print "##### revoke_share('kdb086', 'earthquakes.csv', 'zhr101') #####"
 
+        print "***** list_shared_data('zhr101') *****"
+        list_shared_data("zhr101")
+        print "##### list_shared_data('zhr101') #####"
+
+        print "***** revoke_all_shares('kdb086', 'APC_Equipment.zip') *****"
+        revoke_all_shares('kdb086', 'APC_Equipment.zip')
+        print "##### revoke_all_shares('kdb086', 'APC_Equipment.zip') #####"
+
+        print "***** list_shared_data('wqx202') *****"
+        list_shared_data("wqx202")
+        print "##### list_shared_data('wqx202') #####"
 
 if __name__ == "__main__":
     _init_app(CONFIG_FILE)
@@ -1572,25 +1654,4 @@ if __name__ == "__main__":
         response()
 
     elif config["app_mode"] == "unit_test":
-
-        _test_get_data_kml()
-
-        _test_get_data_big()
-
-        _test_get_data_imap()
-
-        _test_get_data_kdb086()
-
-        _test_get_status()
-
-        _test_list_data()
-
-        _test_cache_registry()
-
-        _test_list_files()
-
-        _test_rename_data()
-
-        _test_style_data()
-
-        #_test_archive_data()
+        unittest.main()
