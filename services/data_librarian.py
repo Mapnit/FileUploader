@@ -681,7 +681,7 @@ def _archive_data_file(username, filename):
     src_file_path = os.path.join(user_folder, filename)
 
     if not os.path.exists(src_file_path):
-        logging.warn('no such data file [%s]' % filename)
+        logging.warning('no such data file [%s]' % filename)
         # print '{"error": "no such data file [%s]", "scope":"env"}' % filename
         return None
 
