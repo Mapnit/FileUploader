@@ -1,4 +1,5 @@
 import os, datetime, re, logging, random
+import csv, requests
 import xml.etree.cElementTree as Et
 import unittest
 
@@ -9,6 +10,7 @@ DEPLOY_ROOT = r"C:\Users\kdb086\Projects\CgiPythonProject"
 CONFIG_FILE = os.path.join(DEPLOY_ROOT, "web.config")
 
 FILE_PATH_SEP = ';'
+# limited by the constraints in Esri File-GDB
 NAME_MAX_LENGTH = 23
 
 ARCHIVE_FOLDER = 'archive'
@@ -18,10 +20,26 @@ FILE_TYPES = [".csv", '.zip', '.kml', '.kmz', '.gpx']
 
 KML_SHP_TYPES = ['Points', 'Polylines', 'Polygons']
 
+CSV_HEADER_KEYWORDS = {
+    "address": ["address"],
+    "city": ["city"],
+    "state": ["state"],
+    "zipcode": ["zip", "zip code", "postal code"],
+    "country": ["country"],
+    "datum": ["datum"],
+    "latitude": ["latitude"],
+    "longitude": ["longitude"]
+}
+
+COORDSYS_LIST = {"WGS84": 4326, "NAD83": 4759, "NAD27": 4608}
+TRANSFORMATION_LIST = {"NAD27_to_NAD83": "NAD_1927_To_NAD_1983_NADCON",
+                       "NAD83_to_WGS84": None}  # "NAD_1983_To_WGS_1984_1"
+
+BING_GC_URL = "http://dev.virtualearth.net/REST/v1/Locations?key={BING_MAP_KEY}&q={ADDRESS}"
+
 logging.basicConfig(filename=os.path.join(os.path.join(DEPLOY_ROOT, "logs"), "data_librarian.log"),
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                     level=logging.DEBUG)
-
 
 # global config variable
 config = {}
@@ -46,12 +64,107 @@ def _init_app(config_file):
         del xml_file
     return
 
+
+#
+# inspect a csv file for addr/loc-related headers
+#
+def _parse_csv_header(csv_headers):
+    idx = 0
+    address_fields = {}
+    for hdr in csv_headers:
+        hdr = hdr.strip().lower()
+        # datum field
+        if hdr in CSV_HEADER_KEYWORDS["datum"]:
+            address_fields["datum"] = {"name": hdr, "index": idx}
+        # address fields
+        elif hdr in CSV_HEADER_KEYWORDS["address"]:
+            address_fields["address"] = {"name": hdr, "index": idx}
+        elif hdr in CSV_HEADER_KEYWORDS["city"]:
+            address_fields["city"] = {"name": hdr, "index": idx}
+        elif hdr in CSV_HEADER_KEYWORDS["state"]:
+            address_fields["state"] = {"name": hdr, "index": idx}
+        elif hdr in CSV_HEADER_KEYWORDS["zipcode"]:
+            address_fields["zipcode"] = {"name": hdr, "index": idx}
+        elif hdr in CSV_HEADER_KEYWORDS["country"]:
+            address_fields["country"] = {"name": hdr, "index": idx}
+        # coordinate fields
+        elif hdr in CSV_HEADER_KEYWORDS["latitude"]:
+            address_fields["latitude"] = {"name": hdr, "index": idx}
+        elif hdr in CSV_HEADER_KEYWORDS["longitude"]:
+            address_fields["longitude"] = {"name": hdr, "index": idx}
+        idx += 1
+
+    return address_fields
+
+
+#
+# extract address from a row in the csv file
+#
+def _parse_address(address_fields, data_columns):
+    addr_part_array = []
+    # address field
+    if "address" in address_fields.keys():
+        address = data_columns[address_fields["address"]["index"]]
+        addr_part_array.append(str(address))
+    # logging.debug("address = " + str(address))
+    # city field
+    if "city" in address_fields.keys():
+        city = data_columns[address_fields["city"]["index"]]
+        addr_part_array.append(str(city))
+    # logging.debug("city = " + str(city))
+    # state field
+    if "state" in address_fields.keys():
+        state = data_columns[address_fields["state"]["index"]]
+        addr_part_array.append(str(state))
+    # logging.debug("state = " + str(state))
+    # zip field
+    if "zipcode" in address_fields.keys():
+        zipcode = data_columns[address_fields["zipcode"]["index"]]
+        addr_part_array.append(str(zipcode))
+    # logging.debug("zipcode = " + str(zipcode))
+    # country field
+    if "country" in address_fields.keys():
+        country = data_columns[address_fields["country"]["index"]]
+        addr_part_array.append(str(country))
+    # logging.debug("country = " + str(country))
+
+    logging.debug("address line: " + ",".join(addr_part_array))
+    return ",".join(addr_part_array)
+
+
+#
+# extract the geocoded location from the Bing response
+#
+def _geocoder_by_bing(address_line):
+    coords = None
+    # request Bing to geocode the address
+    gc_request_url = BING_GC_URL.replace("{BING_MAP_KEY}", config['bing_map_key']).replace("{ADDRESS}", address_line)
+    req = requests.get(gc_request_url)
+    if req.status_code == 200:
+        result = req.json()
+        count = result["resourceSets"][0]["estimatedTotal"]
+        if count > 0:
+            # match code
+            match_code = result["resourceSets"][0]["resources"][0]["matchCodes"][0]
+            # take the first one
+            coords = result["resourceSets"][0]["resources"][0]["point"]["coordinates"]
+            # gc_result["resourceSets"][0]["resources"][0]["geocodePoints"][0]["coordinates"]
+            logging.debug("%s match on the given address [%s]" % (match_code, address_line))
+        else:
+            logging.error("no coordinates matching the given address [%s]" % address_line)
+    else:
+        logging.error("Bing fails to return the geocoding result {status code: %i]" % req.status_code)
+
+    return coords
+
+
 #
 # list all users shared on a given file with a given user
 # - require cx_Oracle
 #
 def _list_shared_users_ora(username, filename, data_filter=None):
     None
+
 
 #
 # list all users shared on a given file with a given user
@@ -71,7 +184,7 @@ def _list_shared_users_lite(username, filename, data_filter=None):
         count = 0
         print '['
         try:
-            logging.debug("list all shared users on [%s] [%s]"%(username, filename))
+            logging.debug("list all shared users on [%s] [%s]" % (username, filename))
             db_conn = sqlite.connect(config['db_conn'])
             row_cur = db_conn.cursor()
             row_cur.execute(config['shared_user_list'], {'owner': username, 'src_file_path': filename})
@@ -113,6 +226,7 @@ def list_shared_users(username, filename, data_filter=None):
 #
 def _list_shared_data_ora(username, data_filter=None):
     None
+
 
 #
 # list all data files shared to a given user
@@ -186,6 +300,7 @@ def list_shared_data(username, data_filter=None):
 def _share_data_ora(username, filename, shared_user):
     None
 
+
 #
 # add a share entry into database
 # - require sqlite
@@ -240,6 +355,7 @@ def share_data(username, filename, shared_user):
 def _revoke_share_ora(username, filename, shared_user):
     None
 
+
 #
 # delete a share entry from database
 # - require sqlite
@@ -293,6 +409,7 @@ def revoke_share(username, filename, shared_user):
 def _revoke_all_shares_ora(username, filename):
     None
 
+
 #
 # delete all share entries on a given file from database
 # - require sqlite
@@ -336,7 +453,6 @@ def revoke_all_shares(username, filename):
         return _revoke_all_shares_ora(username, filename)
     else:  # default
         return _revoke_all_shares_lite(username, filename)
-
 
 
 #
@@ -681,8 +797,7 @@ def _archive_data_file(username, filename):
     src_file_path = os.path.join(user_folder, filename)
 
     if not os.path.exists(src_file_path):
-        logging.warning('no such data file [%s]' % filename)
-        # print '{"error": "no such data file [%s]", "scope":"env"}' % filename
+        logging.error('no such data file [%s]' % filename)
         return None
 
     else:
@@ -702,6 +817,7 @@ def _archive_data_file(username, filename):
 # archive a data file, including its cache registry
 #
 def _archive_data_ora(username, filename, archive_file_path, retain_style=False):
+
     if 'db_conn' not in config.keys():
         return False
     if 'data_archive' not in config.keys():
@@ -719,7 +835,7 @@ def _archive_data_ora(username, filename, archive_file_path, retain_style=False)
             db_conn = cx_Oracle.connect(config['db_conn'])
             row_cur = db_conn.cursor()
             if archive_file_path is None:
-                logging.warn("delete the orphan registry (source file is missing)")
+                logging.info("delete the orphan registry (source file is missing)")
             else:
                 # move the registry to the archived table
                 row_cur.prepare(config['data_archive'])
@@ -755,6 +871,7 @@ def _archive_data_ora(username, filename, archive_file_path, retain_style=False)
 
 
 def _archive_data_lite(username, filename, archive_file_path, retain_style=False):
+
     if 'db_conn' not in config.keys():
         return False
     if 'data_archive' not in config.keys():
@@ -772,13 +889,14 @@ def _archive_data_lite(username, filename, archive_file_path, retain_style=False
             db_conn = sqlite.connect(config['db_conn'])
             row_cur = db_conn.cursor()
             if archive_file_path is None:
-                logging.warn("delete the orphan registry (source file is missing)")
+                logging.info("delete the orphan registry (source file is missing)")
             else:
                 # move the registry to the archived table
                 row_cur.execute(config['data_archive'], {'owner': username,
                                                          'src_file_path': filename,
                                                          'arv_file_path': archive_file_path,
                                                          'archived': datetime.datetime.now()})
+            # delete the data registry
             row_cur.execute(config['data_delete'], {'owner': username,
                                                     'src_file_path': filename})
             # delete the associated style record
@@ -1222,8 +1340,8 @@ def _prepare_data(username, filename):
     fext = fext.lower()
 
     stg_fgdb_name = username + ".gdb"
-    # stg_fgdb_path = os.path.join(stg_folder, stg_fgdb_name)
-    stg_fgdb_path = "in_memory"
+    stg_fgdb_path = os.path.join(stg_folder, stg_fgdb_name)
+    # stg_fgdb_path = "in_memory"
 
     import arcpy
     from arcpy import env
@@ -1257,8 +1375,8 @@ def _prepare_data(username, filename):
         if carto_styles_string is None:
             carto_styles_array.append(_get_default_style(data_despt.shapeType))
         # limit data by count
-        stg_data_path, total_row_count, filtered_row_count = \
-            _filter_data_by_count(stg_data_path, data_despt.OIDFieldName, stg_folder)
+        stg_data_path, total_row_count, filtered_row_count = _filter_data_by_count(
+            stg_data_path, data_despt.OIDFieldName, stg_folder)
         # transform or project to the standard spatial ref
         src_spatial_ref = data_despt.spatialReference
         if src_spatial_ref.name != output_spatial_ref.name:
@@ -1289,8 +1407,8 @@ def _prepare_data(username, filename):
         if carto_styles_string is None:
             carto_styles_array.append(_get_default_style(data_despt.shapeType))
         # limit data by count
-        stg_data_path, total_row_count, filtered_row_count = \
-            _filter_data_by_count(stg_data_path, data_despt.OIDFieldName, stg_fgdb_path)
+        stg_data_path, total_row_count, filtered_row_count = _filter_data_by_count(
+            stg_data_path, data_despt.OIDFieldName, stg_fgdb_path)
         # transform or project to the standard spatial ref
         src_spatial_ref = data_despt.spatialReference
         if src_spatial_ref.name != output_spatial_ref.name:
@@ -1306,6 +1424,51 @@ def _prepare_data(username, filename):
         # arcpy.Delete_management(stg_data_path)
 
     elif fext == ".csv":  # csv
+        src_spatial_ref = None
+        # extract addr/loc columns from csv
+        with open(src_file_path, "rb") as csvf:
+            csv_reader = csv.reader(csvf)
+            # inspect header line
+            csv_headers = csv_reader.next()
+            csv_qualifiers = _parse_csv_header(csv_headers)
+            # the 1st data line
+            data_fields = csv_reader.next()
+            # datum field
+            if "datum" in csv_qualifiers.keys():
+                src_datum = data_fields[csv_qualifiers["datum"]["index"]]
+                src_datum = src_datum.upper()
+                if src_datum in COORDSYS_LIST.keys():
+                    src_spatial_ref = arcpy.SpatialReference(COORDSYS_LIST[src_datum])
+
+        # check the addr/loc columns 
+        if "latitude" not in csv_qualifiers.keys() or "longitude" not in csv_qualifiers.keys():
+            if "address" not in csv_qualifiers.keys():
+                logging.error("invalid csv file with specified columns")
+                # TODO: error out
+            else: 
+                # geocode each row
+                csv_filepath_gc = os.path.join(stg_folder, fname + ".csv")
+                with open(csv_filepath_gc, "wb") as csvfw:
+                    csv_writer = csv.writer(csvfw)
+                    with open(src_file_path, "rb") as csvfr:
+                        csv_reader = csv.reader(csvfr)
+                        # read the first/header line
+                        csv_headers = csv_reader.next()
+                        csv_headers.append("latitude")
+                        csv_headers.append("longitude")
+                        csv_writer.writerow(csv_headers)
+                        # read the data rows from the 2nd line
+                        for data_fields in csv_reader:
+                            address_line = _parse_address(csv_qualifiers, data_fields)
+                            gc_coords = _geocoder_by_bing(address_line)
+                            if gc_coords is not None:
+                                data_fields.append(gc_coords[0])
+                                data_fields.append(gc_coords[1])
+                                csv_writer.writerow(data_fields)
+                            
+                src_file_path = csv_filepath_gc
+            
+        # make file-gdb as a staging db
         if not arcpy.Exists(stg_fgdb_path):
             logging.info("create fgdb [%s] under [%s]" % (stg_fgdb_name, stg_folder))
             arcpy.CreateFileGDB_management(stg_folder, stg_fgdb_name)
@@ -1313,8 +1476,10 @@ def _prepare_data(username, filename):
         # convert to feature class
         logging.info("convert csv [%s] to staging fgdb in [%s]" % (src_file_path, stg_fgdb_path))
         csv_layer_name = fname_norm + "_csv_layer"
+        if src_spatial_ref is None:
+            src_spatial_ref = output_spatial_ref
         arcpy.MakeXYEventLayer_management(src_file_path, "longitude", "latitude",
-                                          csv_layer_name, output_spatial_ref)
+                                          csv_layer_name, src_spatial_ref)
 
         stg_data_path = os.path.join(stg_fgdb_path, fname_norm)
         arcpy.CopyFeatures_management(csv_layer_name, stg_data_path)
@@ -1324,13 +1489,25 @@ def _prepare_data(username, filename):
         if carto_styles_string is None:
             carto_styles_array.append(_get_default_style(data_despt.shapeType))
         # limit data by count
-        stg_data_path, total_row_count, filtered_row_count = \
-            _filter_data_by_count(stg_data_path, data_despt.OIDFieldName, stg_fgdb_path)
-        # transform or project to the standard spatial ref
-        src_spatial_ref = data_despt.spatialReference
-        if src_spatial_ref.name != output_spatial_ref.name:
-            stg_prep_file_path = stg_data_path + "_prep"
-            arcpy.Project_management(stg_data_path, stg_prep_file_path, output_spatial_ref)
+        stg_data_path, total_row_count, filtered_row_count = _filter_data_by_count(
+            stg_data_path, data_despt.OIDFieldName, stg_fgdb_path)
+
+        # transform or project to the output spatial ref if necessary
+        if data_despt.spatialReference.factoryCode == COORDSYS_LIST["NAD27"]:
+            # NAD27 -> NAD83
+            output_spatial_ref = arcpy.SpatialReference(COORDSYS_LIST["NAD83"])
+            stg_prep_file_path = stg_data_path + "_prep2"
+            arcpy.Project_management(stg_data_path, stg_prep_file_path, output_spatial_ref,
+                                     TRANSFORMATION_LIST["NAD27_to_NAD83"])
+            stg_data_path = stg_prep_file_path
+            data_despt = arcpy.Describe(stg_data_path)
+
+        if data_despt.spatialReference.factoryCode == COORDSYS_LIST["NAD83"]:
+            # NAD83 -> WGS84
+            output_spatial_ref = arcpy.SpatialReference(COORDSYS_LIST["WGS84"])
+            stg_prep_file_path = stg_data_path + "_prep1"
+            arcpy.Project_management(stg_data_path, stg_prep_file_path, output_spatial_ref,
+                                     TRANSFORMATION_LIST["NAD83_to_WGS84"])
             stg_data_path = stg_prep_file_path
 
         # output features to json
@@ -1361,8 +1538,8 @@ def _prepare_data(username, filename):
                     if carto_styles_string is None:
                         carto_styles_array.append(_get_default_style(data_despt.shapeType, shp_type))
                     # limit data by count
-                    stg_data_path, total_count, filtered_count = \
-                        _filter_data_by_count(stg_data_path, data_despt.OIDFieldName, stg_fgdb_path, shp_type)
+                    stg_data_path, total_count, filtered_count = _filter_data_by_count(
+                        stg_data_path, data_despt.OIDFieldName, stg_fgdb_path, shp_type)
                     # transform or project to the standard spatial ref
                     src_spatial_ref = data_despt.spatialReference
                     if src_spatial_ref.name != output_spatial_ref.name:
@@ -1431,7 +1608,7 @@ def get_data(username, filename):
 # list all files belonging to a given user with a filter
 # (from file system)
 #
-def list_files(username, data_filter=None):
+def _list_files(username, data_filter=None):
     list_folder = os.path.join(config['store'], username)
     logging.debug('user folder: ' + list_folder)
 
@@ -1493,8 +1670,7 @@ def _list_data_ora(username, data_filter=None):
 
                 if count > 0:
                     print ','
-                print '''{"src_file_path":"%s", "data_name":"%s", "size":%s, "last_modified":"%s", "last_uploaded":"%s",
-                          "upload_status":"%s", "total_row_count":%s, "cached_row_count":%s, "drawing_info":%s}''' \
+                print '{"src_file_path":"%s", "data_name":"%s", "size":%s, "last_modified":"%s", "last_uploaded":"%s", "upload_status":"%s", "total_row_count":%s, "cached_row_count":%s, "drawing_info":%s}' \
                       % (src_file_path, data_name, data_size, last_modified.strftime("%Y-%m-%d %H:%M:%S"),
                          last_uploaded.strftime("%Y-%m-%d %H:%M:%S"),
                          upload_status, total_row_count, cached_row_count, drawing_info)
@@ -1546,8 +1722,7 @@ def _list_data_lite(username, data_filter=None):
 
                 if count > 0:
                     print ','
-                print '''{"src_file_path":"%s", "data_name":"%s", "size":%s, "last_modified":"%s", "last_uploaded":"%s",
-                        "upload_status":"%s", "total_row_count":%s, "cached_row_count":%s, "drawing_info":%s}''' \
+                print '{"src_file_path":"%s", "data_name":"%s", "size":%s, "last_modified":"%s", "last_uploaded":"%s", "upload_status":"%s", "total_row_count":%s, "cached_row_count":%s, "drawing_info":%s}' \
                       % (src_file_path, data_name, data_size, last_modified, last_uploaded,
                          upload_status, total_row_count, cached_row_count, drawing_info)
                 count += 1
@@ -1610,7 +1785,7 @@ def response():
 
         elif action == 'list_files':
             logging.info("execute: list files satisfying filters [%s] " % str(filters))
-            list_files(username, filters)
+            _list_files(username, filters)
 
         elif action == 'data':
             if 'filename' in arguments.keys() and arguments['filename'].value is not None:
@@ -1714,11 +1889,11 @@ class TestDataLibrarian(unittest.TestCase):
     def test_list_files(self):
 
         print "***** list_files('imaps') *****"
-        list_files("imaps")
+        _list_files("imaps")
         print "##### list_files('imaps') #####"
 
         print "***** list_files('kdb086') *****"
-        list_files("kdb086")
+        _list_files("kdb086")
         print "##### list_files('kdb086') #####"
 
     def test_list_data(self):
@@ -1843,7 +2018,7 @@ class TestDataLibrarian(unittest.TestCase):
         get_status("kdb086", "earthquakes.csv")
         print "##### get_status('kdb086', 'earthquakes.csv') #####"
 
-    def _test_archive_data(self):
+    def test_archive_data(self):
 
         print "***** get_data('kdb086', 'HighSchools.kmz') *****"
         get_data("kdb086", "HighSchools.kmz")
@@ -1857,7 +2032,7 @@ class TestDataLibrarian(unittest.TestCase):
         get_data("kdb086", "HighSchools.kmz")
         print "##### get_data('kdb086', 'HighSchools.kmz') #####"
 
-    def _test_rename_data(self):
+    def test_rename_data(self):
 
         print "***** list_data('imaps') *****"
         list_data("imaps")
@@ -1871,7 +2046,7 @@ class TestDataLibrarian(unittest.TestCase):
         list_data("imaps")
         print "##### list_data('imaps') #####"
 
-    def _test_style_data(self):
+    def test_style_data(self):
 
         print "***** list_data('kdb086') *****"
         list_data("kdb086")
@@ -1938,6 +2113,49 @@ class TestDataLibrarian(unittest.TestCase):
         print "***** list_shared_data('wqx202') *****"
         list_shared_data("wqx202")
         print "##### list_shared_data('wqx202') #####"
+
+    def test_get_data_csv(self):
+
+        print "***** get_data('imaps', 'APC_Offices_SingleAddress_address.csv') *****"
+        get_data("imaps", "APC_Offices_SingleAddress_address.csv")
+        print "##### get_data('imaps', 'APC_Offices_SingleAddress_address.csv') #####"
+
+        print "***** get_data('imaps', 'APC_Offices_SingleAddress_NAD83.csv') *****"
+        get_data("imaps", "APC_Offices_SingleAddress_NAD83.csv")
+        print "##### get_data('imaps', 'APC_Offices_SingleAddress_NAD83.csv') #####"
+
+        print "***** get_data('imaps', 'APC_Offices_SingleAddress_NAD27.csv') *****"
+        get_data("imaps", "APC_Offices_SingleAddress_NAD27.csv")
+        print "##### get_data('imaps', 'APC_Offices_SingleAddress_NAD27.csv') #####"
+
+        print "***** get_data('imaps', 'APC_Offices_SingleAddress_noDatum.csv') *****"
+        get_data("imaps", "APC_Offices_SingleAddress_noDatum.csv")
+        print "##### get_data('imaps', 'APC_Offices_SingleAddress_noDatum.csv') #####"
+
+        print "***** get_data('imaps', 'APC_Offices_SingleAddress_WGS84.csv') *****"
+        get_data("imaps", "APC_Offices_SingleAddress_WGS84.csv")
+        print "##### get_data('imaps', 'APC_Offices_SingleAddress_WGS84.csv') #####"
+
+        print "***** get_data('imaps', 'APC_Offices_SplitAddress_address.csv') *****"
+        get_data("imaps", "APC_Offices_SplitAddress_address.csv")
+        print "##### get_data('imaps', 'APC_Offices_SplitAddress_address.csv') #####"
+
+        print "***** get_data('imaps', 'APC_Offices_SplitAddress_NAD83.csv') *****"
+        get_data("imaps", "APC_Offices_SplitAddress_NAD83.csv")
+        print "##### get_data('imaps', 'APC_Offices_SplitAddress_NAD83.csv') #####"
+
+        print "***** get_data('imaps', 'APC_Offices_SplitAddress_NAD27.csv') *****"
+        get_data("imaps", "APC_Offices_SplitAddress_NAD27.csv")
+        print "##### get_data('imaps', 'APC_Offices_SplitAddress_NAD27.csv') #####"
+
+        print "***** get_data('imaps', 'APC_Offices_SplitAddress_noDatum.csv') *****"
+        get_data("imaps", "APC_Offices_SplitAddress_noDatum.csv")
+        print "##### get_data('imaps', 'APC_Offices_SplitAddress_noDatum.csv') #####"
+
+        print "***** get_data('imaps', 'APC_Offices_SplitAddress_WGS84.csv') *****"
+        get_data("imaps", "APC_Offices_SplitAddress_WGS84.csv")
+        print "##### get_data('imaps', 'APC_Offices_SplitAddress_WGS84.csv') #####"
+
 
 if __name__ == "__main__":
     _init_app(CONFIG_FILE)
