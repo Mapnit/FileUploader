@@ -1886,6 +1886,10 @@ def response():
 #
 class TestDataLibrarian(unittest.TestCase):
 
+    def setUp(self):
+        # need to grab configs again inside TestClass
+        _init_app(CONFIG_FILE)
+
     def test_list_files(self):
 
         print "***** list_files('imaps') *****"
