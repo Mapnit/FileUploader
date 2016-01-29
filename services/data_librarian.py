@@ -31,9 +31,9 @@ CSV_HEADER_KEYWORDS = {
     "longitude": ["longitude"]
 }
 
-COORDSYS_LIST = {"WGS84": 4326, "NAD83": 4759, "NAD27": 4608}
+COORDSYS_LIST = {"WGS84": 4326, "NAD83": 4269, "NAD27": 4267}
 TRANSFORMATION_LIST = {"NAD27_to_NAD83": "NAD_1927_To_NAD_1983_NADCON",
-                       "NAD83_to_WGS84": None}  # "NAD_1983_To_WGS_1984_1"
+                       "NAD83_to_WGS84": "WGS_1984_(ITRF00)_To_NAD_1983"}
 
 BING_GC_URL = "http://dev.virtualearth.net/REST/v1/Locations?key={BING_MAP_KEY}&q={ADDRESS}"
 
