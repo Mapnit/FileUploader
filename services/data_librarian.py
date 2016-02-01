@@ -1438,15 +1438,20 @@ def _prepare_data(username, filename):
                 src_datum = data_fields[csv_qualifiers["datum"]["index"]]
                 src_datum = src_datum.upper()
                 if src_datum in COORDSYS_LIST.keys():
+                    logging.info("found datum [%s] in csv [%s]" % (src_datum, src_file_path))
                     src_spatial_ref = arcpy.SpatialReference(COORDSYS_LIST[src_datum])
+            else:
+                logging.info("found no datum (and assumed WGS84) in csv [%s]" % src_file_path)
 
-        # check the addr/loc columns 
+        # check the addr/loc columns
         if "latitude" not in csv_qualifiers.keys() or "longitude" not in csv_qualifiers.keys():
+            logging.info("found no latitude or longitude column in csv [%s]" % src_file_path)
             if "address" not in csv_qualifiers.keys():
-                logging.error("invalid csv file with specified columns")
+                logging.error("found no address column in csv [%s]" % src_file_path)
                 # TODO: error out
-            else: 
+            else:
                 # geocode each row
+                logging.info("geocode address in csv [%s]" % src_file_path)
                 csv_filepath_gc = os.path.join(stg_folder, fname + ".csv")
                 with open(csv_filepath_gc, "wb") as csvfw:
                     csv_writer = csv.writer(csvfw)
@@ -1465,9 +1470,9 @@ def _prepare_data(username, filename):
                                 data_fields.append(gc_coords[0])
                                 data_fields.append(gc_coords[1])
                                 csv_writer.writerow(data_fields)
-                            
+
                 src_file_path = csv_filepath_gc
-            
+
         # make file-gdb as a staging db
         if not arcpy.Exists(stg_fgdb_path):
             logging.info("create fgdb [%s] under [%s]" % (stg_fgdb_name, stg_folder))
@@ -1495,6 +1500,7 @@ def _prepare_data(username, filename):
         # transform or project to the output spatial ref if necessary
         if data_despt.spatialReference.factoryCode == COORDSYS_LIST["NAD27"]:
             # NAD27 -> NAD83
+            logging.info("project from NAD27 to NAD83 on csv [%s]" % stg_data_path)
             output_spatial_ref = arcpy.SpatialReference(COORDSYS_LIST["NAD83"])
             stg_prep_file_path = stg_data_path + "_prep2"
             arcpy.Project_management(stg_data_path, stg_prep_file_path, output_spatial_ref,
@@ -1504,6 +1510,7 @@ def _prepare_data(username, filename):
 
         if data_despt.spatialReference.factoryCode == COORDSYS_LIST["NAD83"]:
             # NAD83 -> WGS84
+            logging.info("project from NAD83 to WGS84 on csv [%s]" % stg_data_path)
             output_spatial_ref = arcpy.SpatialReference(COORDSYS_LIST["WGS84"])
             stg_prep_file_path = stg_data_path + "_prep1"
             arcpy.Project_management(stg_data_path, stg_prep_file_path, output_spatial_ref,
