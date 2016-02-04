@@ -1272,7 +1272,9 @@ def _filter_data_by_count(file_path, oid_column, stg_workspace, extra_name=""):
     env.overwriteOutput = True
 
     fname, fext = os.path.splitext(os.path.basename(file_path))
-    fname = fname[0:NAME_MAX_LENGTH]
+    # (2016/2/4) remove any illegal char in file base name
+    fname = _normalize_name(fname[0:NAME_MAX_LENGTH])
+    #
     extra_name = "" if extra_name is None else extra_name.strip()
 
     stats_fields = [[oid_column, "MIN"]]
@@ -2166,6 +2168,13 @@ class TestDataLibrarian(unittest.TestCase):
         print "***** get_data('imaps', 'APC_Offices_SplitAddress_WGS84.csv') *****"
         get_data("imaps", "APC_Offices_SplitAddress_WGS84.csv")
         print "##### get_data('imaps', 'APC_Offices_SplitAddress_WGS84.csv') #####"
+
+    def test_bad_data(self):
+        
+        # zip contains extra files and has space in names
+        print "***** get_data('imaps', 'Silvertip 76-9 Unit F 1H Flowline-CL-PERM-TWS.zip') *****"
+        get_data("imaps", "Silvertip 76-9 Unit F 1H Flowline-CL-PERM-TWS.zip")
+        print "##### get_data('imaps', 'Silvertip 76-9 Unit F 1H Flowline-CL-PERM-TWS.zip') #####"
 
 
 if __name__ == "__main__":
