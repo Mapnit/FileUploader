@@ -1366,7 +1366,18 @@ def _prepare_data(username, filename):
         with zipfile.ZipFile(src_file_path, "r") as zipShpFile:
             zipShpFile.extractall(stg_folder)
             namelist = zipShpFile.namelist()
-            unzip_base, unzip_ext = os.path.splitext(namelist[0])
+            # {2016/2/4) search for shape file and ignore others
+            shp_filename = None
+            for sfn in namelist:
+                if sfn[-4:].lower() == ".shp":
+                    # only take the first shapefile
+                    shp_filename = sfn
+                    break
+
+        if shp_filename is None:
+            logging.error("no shape file found in [%s]" % src_file_path)
+        else:
+            unzip_base, unzip_ext = os.path.splitext(shp_filename)
             unzip_dir = os.path.dirname(unzip_base)
             unzip_base = os.path.basename(unzip_base)
             stg_data_path = os.path.join(os.path.join(stg_folder, unzip_dir), unzip_base + ".shp")
