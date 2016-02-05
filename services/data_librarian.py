@@ -1235,7 +1235,8 @@ def _get_default_style(geom_type, label=None):
 # normalize a filename by removing any illegal char
 #
 def _normalize_name(name):
-    return '_'.join(re.split('[\W]+', name))
+    # (2016/2/5) added alpha prefix to eliminate illegal layer name
+    return 'nlz_' + '_'.join(re.split('[\W]+', name))
 
 
 def _write_features_json(datapath, json_file_path):
@@ -2186,6 +2187,11 @@ class TestDataLibrarian(unittest.TestCase):
         print "***** get_data('imaps', 'Silvertip 76-9 Unit F 1H Flowline-CL-PERM-TWS.zip') *****"
         get_data("imaps", "Silvertip 76-9 Unit F 1H Flowline-CL-PERM-TWS.zip")
         print "##### get_data('imaps', 'Silvertip 76-9 Unit F 1H Flowline-CL-PERM-TWS.zip') #####"
+
+        # CSV has space and leading numeric letters in name
+        print "***** get_data('imaps', '558 SSX GWA V2 five.csv') *****"
+        get_data("imaps", "558 SSX GWA V2 five.csv")
+        print "##### get_data('imaps', '558 SSX GWA V2 five.csv') #####"
 
 
 if __name__ == "__main__":
