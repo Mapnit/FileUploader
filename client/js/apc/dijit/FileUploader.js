@@ -432,13 +432,28 @@ define([
 					}
 				};
 
-				var popupTemplate = null;
+				// var infoTemplate = new InfoTemplate(filename, "${*}");
+				
+				var tmplFieldInfos = []; 
+				array.forEach(featureJson["fields"], lang.hitch(this, function(fld) {
+					tmplFieldInfos.push({
+						fieldName: fld.name,
+						label: fld.alias, 
+						visible: true
+					}); 
+				})); 
+				var popupTemplate = new PopupTemplate({
+					title: featureJson["displayFieldName"] || filename,
+					fieldInfos: tmplFieldInfos
+				});
+				/*
 				if (featureJson["displayFieldName"] && featureJson["displayFieldName"].length > 0) {
 					popupTemplate = new PopupTemplate({
 						title: "{" + featureJson["displayFieldName"] + "}",
 						description: "{" + featureJson["displayFieldName"] + "}"
 					});
 				}
+				*/
 
 				//create a feature layer based on the feature collection
 				var layerId = this._layerIdPrefix + layerIdx; 
