@@ -464,8 +464,9 @@ define([
 				});
 
 				//associate the features with the popup on click
-				featureLayer.on("click", lang.hitch(this, function (evt) {
-					map.infoWindow.setFeatures([evt.graphic]);
+				featureLayer.on("mouse-over", lang.hitch(this, function (evt) {
+					this.map.infoWindow.setFeatures([evt.graphic]);
+					this.map.infoWindow.show(evt.mapPoint);
 				}));
 
 				featureLayerSet.push(featureLayer);
