@@ -1236,7 +1236,8 @@ def _get_default_style(geom_type, label=None):
 #
 def _normalize_name(name):
     # (2016/2/5) added alpha prefix to eliminate illegal layer name
-    return 'nlz_' + '_'.join(re.split('[\W]+', name))
+	# (2016/2/12) shortened the prefix, which had made some names too long and caused "arcpy.Statistics_analysis" to throw an error of invalid table name
+    return 'n_' + '_'.join(re.split('[\W]+', name))
 
 
 def _write_features_json(datapath, json_file_path):
