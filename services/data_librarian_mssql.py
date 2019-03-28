@@ -1317,27 +1317,27 @@ def get_data(username, filename):
 
     fname, fext = os.path.splitext(os.path.basename(filename))
 
-    stg_json_path_string = _get_cache(username, filename)
-    if stg_json_path_string is not None:
-        logging.info("use cached data: [%s]" % stg_json_path_string)
+    cache_json_path_string = _get_cache(username, filename)
+    if cache_json_path_string is not None:
+        logging.info("use cached data: [%s]" % cache_json_path_string)
     else:
         # merely create a registry entry
         _register_cache(username, filename, "", fname, "PROCESSING")
         # prepare data
         logging.debug("prepare data into json")
-        stg_json_path_string, carto_json_string, total_row_count, cached_row_count = _prepare_data(username, filename)
+        cache_json_path_string, carto_json_string, total_row_count, cached_row_count = _prepare_data(username, filename)
         # register the data with the cache and status info
-        if stg_json_path_string is not None:
-            _register_cache(username, filename, stg_json_path_string, fname, "READY", total_row_count, cached_row_count)
+        if cache_json_path_string is not None:
+            _register_cache(username, filename, cache_json_path_string, fname, "READY", total_row_count, cached_row_count)
         # set the style
         if carto_json_string is not None:
             set_style(username, filename, carto_json_string)
 
     # output feature as json
-    if stg_json_path_string is not None:
+    if cache_json_path_string is not None:
         logging.debug("send out data")
-        stg_json_paths = stg_json_path_string.split(FILE_PATH_SEP)
-        _output_feature_json(stg_json_paths)
+        cache_json_paths = cache_json_path_string.split(FILE_PATH_SEP)
+        _output_feature_json(cache_json_paths)
 
 
 #
