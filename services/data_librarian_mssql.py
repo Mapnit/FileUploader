@@ -1041,6 +1041,7 @@ def _prepare_data(username, filename):
     output_spatial_ref = arcpy.SpatialReference(int(config["output_wkid"]))
 
     stg_json_path_string = None
+    stg_json_paths = []
 
     total_row_count = 0
     filtered_row_count = 0
@@ -1048,7 +1049,7 @@ def _prepare_data(username, filename):
     carto_styles_string = get_style(username, filename)
     carto_styles_array = []
 
-    data_despt_arry = []
+    data_despt_array = []
 
     if fext == ".zip":  # zipped shapefile
         # unzip the zip file
@@ -1075,7 +1076,7 @@ def _prepare_data(username, filename):
             logging.info("unzipped shape file [%s]" % stg_data_path)
 
         data_despt = arcpy.Describe(stg_data_path)
-        data_despt_arry.append(data_despt)
+        data_despt_array.append(data_despt)
         # assign default symbology
         if carto_styles_string is None:
             carto_styles_array.append(_get_default_style(data_despt.shapeType))
@@ -1088,10 +1089,13 @@ def _prepare_data(username, filename):
             stg_prep_file_path = os.path.join(os.path.join(stg_folder, unzip_dir), unzip_base + "_prep.shp")
             arcpy.Project_management(stg_data_path, stg_prep_file_path, output_spatial_ref)
             stg_data_path = stg_prep_file_path
+            data_despt = arcpy.Describe(stg_data_path)
+        data_despt_array.append(data_despt)
 
         # write features to json
         stg_json_path_string = os.path.join(cache_folder, fname + ".json")
         _write_features_json(stg_data_path, stg_json_path_string)
+        stg_json_paths.append(stg_json_path_string)
 
         # cleanup
         # arcpy.Delete_management(stg_data_path)
@@ -1107,7 +1111,6 @@ def _prepare_data(username, filename):
         arcpy.GPXtoFeatures_conversion(src_file_path, stg_data_path)
 
         data_despt = arcpy.Describe(stg_data_path)
-        data_despt_arry.append(data_despt)
         # assign default symbology
         if carto_styles_string is None:
             carto_styles_array.append(_get_default_style(data_despt.shapeType))
@@ -1120,10 +1123,13 @@ def _prepare_data(username, filename):
             stg_prep_file_path = stg_data_path + "_prep"
             arcpy.Project_management(stg_data_path, stg_prep_file_path, output_spatial_ref)
             stg_data_path = stg_prep_file_path
+            data_despt = arcpy.Describe(stg_data_path)
+        data_despt_array.append(data_despt)
 
         # output features to json
         stg_json_path_string = os.path.join(cache_folder, fname + ".json")
         _write_features_json(stg_data_path, stg_json_path_string)
+        stg_json_paths.append(stg_json_path_string)
 
         # cleanup
         # arcpy.Delete_management(stg_data_path)
@@ -1229,17 +1235,17 @@ def _prepare_data(username, filename):
             stg_data_path = stg_prep_file_path
             data_despt = arcpy.Describe(stg_data_path)
 
-        data_despt_arry.append(data_despt)
+        data_despt_array.append(data_despt)
 
         # output features to json
         stg_json_path_string = os.path.join(cache_folder, fname + ".json")
         _write_features_json(stg_data_path, stg_json_path_string)
+        stg_json_paths.append(stg_json_path_string)
 
         # cleanup
         # arcpy.Delete_management(stg_data_path)
 
     elif fext in [".kmz", ".kml"]:  # kml/kmz
-        stg_json_paths = []
         # convert to feature class
         logging.info("convert kml/kmz [%s] to staging fgdb in [%s]" % (src_file_path, stg_folder))
         arcpy.KMLToLayer_conversion(src_file_path, stg_folder, fname_norm)
@@ -1267,11 +1273,12 @@ def _prepare_data(username, filename):
                         stg_prep_file_path = stg_data_path + "_prep"
                         arcpy.Project_management(stg_data_path, stg_prep_file_path, output_spatial_ref)
                         stg_data_path = stg_prep_file_path
+                        data_despt = arcpy.Describe(stg_data_path)
+                    data_despt_array.append(data_despt)
 
                     # output features to json
                     stg_json_path = os.path.join(cache_folder, "%s_%s_%s.json" % (fname, ds_name, shp_type))
                     _write_features_json(stg_data_path, stg_json_path)
-
                     # add it to the cache file array
                     stg_json_paths.append(stg_json_path)
 
@@ -1293,7 +1300,7 @@ def _prepare_data(username, filename):
 
     # transform json into featureCollection
     cache_json_path = os.path.join(cache_folder, "%s_%s.json" % (fname, "featurecoll"))
-    _convert_to_featurecoll(stg_json_paths, carto_styles_array, data_despt, fname, cache_json_path)
+    _convert_to_featurecoll(stg_json_paths, carto_styles_array, data_despt_array, fname, cache_json_path)
 
     #return stg_json_path_string, carto_styles_string, total_row_count, filtered_row_count
     return cache_json_path, carto_styles_string, total_row_count, filtered_row_count
