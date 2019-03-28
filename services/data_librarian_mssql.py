@@ -853,9 +853,10 @@ def set_style(username, filename, drawing_info):
 #
 # create a default symbol in json
 #
-def _get_default_style(geom_type, label=None):
+def _get_default_style(geom_type, label=None, description=None):
 
     label = "" if label is None else label
+    description = "" if description is None else description
     geom_type = geom_type.lower()
 
     if geom_type.find("point") > -1:
@@ -871,7 +872,7 @@ def _get_default_style(geom_type, label=None):
     with open(style_file_path, "r") as json_file:
         style_json = json_file.read()
 
-    return '{"label": "%s", %s}' % (label, style_json)
+    return '{"label": "%s", "description": "%s", %s}' % (label, description, style_json)
 
 
 #
