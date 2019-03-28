@@ -4,7 +4,7 @@ import xml.etree.cElementTree as Et
 import unittest
 
 # app deployment config
-DEPLOY_ROOT = r"C:\Users\kdb086\Projects\CgiPythonProject"
+DEPLOY_ROOT = r"C:\ProjectStore\Chen\UploadFile"
 
 # app runtime config
 CONFIG_FILE = os.path.join(DEPLOY_ROOT, "web.config")
@@ -27,8 +27,8 @@ CSV_HEADER_KEYWORDS = {
     "zipcode": ["zip", "zip code", "postal code"],
     "country": ["country"],
     "datum": ["datum"],
-    "latitude": ["latitude"],
-    "longitude": ["longitude"]
+    "latitude": ["latitude", "lat"],
+    "longitude": ["longitude", "lon", "long"]
 }
 
 COORDSYS_LIST = {"WGS84": 4326, "NAD83": 4269, "NAD27": 4267}
@@ -160,24 +160,16 @@ def _geocoder_by_bing(address_line):
 
 #
 # list all users shared on a given file with a given user
-# - require cx_Oracle
+# - require pymssql
 #
-def _list_shared_users_ora(username, filename, data_filter=None):
-    None
-
-
-#
-# list all users shared on a given file with a given user
-# - require sqlite
-#
-def _list_shared_users_lite(username, filename, data_filter=None):
-    if 'db_conn' not in config.keys():
+def _list_shared_users_mssql(username, filename, data_filter=None):
+    if 'db_server' not in config.keys():
         return None
     if 'shared_user_list' not in config.keys():
         return None
 
     try:
-        import sqlite3 as sqlite
+        import pymssql as mssql
         db_conn = None
         row_cur = None
 
@@ -185,7 +177,7 @@ def _list_shared_users_lite(username, filename, data_filter=None):
         print '['
         try:
             logging.debug("list all shared users on [%s] [%s]" % (username, filename))
-            db_conn = sqlite.connect(config['db_conn'])
+            db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             row_cur.execute(config['shared_user_list'], {'owner': username, 'src_file_path': filename})
             for row in row_cur:
@@ -197,7 +189,7 @@ def _list_shared_users_lite(username, filename, data_filter=None):
                 print '''{"shared_user":"%s", "shared_date":"%s"}''' \
                       % (shared_user, shared_date)
                 count += 1
-        except sqlite.DatabaseError as e:
+        except mssql.DatabaseError as e:
             logging.error('error in list_shared_users: ' + str(e))
             return None
         finally:
@@ -214,32 +206,24 @@ def _list_shared_users_lite(username, filename, data_filter=None):
 
 
 def list_shared_users(username, filename, data_filter=None):
-    if config["db_provider"] == "oracle":
-        return _list_shared_users_ora(username, filename, data_filter)
+    if config["db_provider"] == "mssql":
+        return _list_shared_users_mssql(username, filename, data_filter)
     else:  # default
         return _list_shared_users_lite(username, filename, data_filter)
 
 
 #
 # list all data files shared to a given user
-# - require cx_Oracle
+# - require pymssql
 #
-def _list_shared_data_ora(username, data_filter=None):
-    None
-
-
-#
-# list all data files shared to a given user
-# - require sqlite
-#
-def _list_shared_data_lite(username, data_filter=None):
-    if 'db_conn' not in config.keys():
+def _list_shared_data_mssql(username, data_filter=None):
+    if 'db_server' not in config.keys():
         return None
     if 'shared_data_list' not in config.keys():
         return None
 
     try:
-        import sqlite3 as sqlite
+        import pymssql as mssql
         db_conn = None
         row_cur = None
 
@@ -247,7 +231,7 @@ def _list_shared_data_lite(username, data_filter=None):
         print '['
         try:
             logging.debug("list all data files shared to " + username)
-            db_conn = sqlite.connect(config['db_conn'])
+            db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             row_cur.execute(config['shared_data_list'], {'shared_user': username})
             for row in row_cur:
@@ -270,7 +254,7 @@ def _list_shared_data_lite(username, data_filter=None):
                       % (owner, src_file_path, data_name, data_size, last_modified, last_uploaded,
                          upload_status, total_row_count, cached_row_count, drawing_info, shared_date)
                 count += 1
-        except sqlite.DatabaseError as e:
+        except mssql.DatabaseError as e:
             logging.error('error in list_shared_data: ' + str(e))
             return None
         finally:
@@ -287,7 +271,9 @@ def _list_shared_data_lite(username, data_filter=None):
 
 
 def list_shared_data(username, data_filter=None):
-    if config["db_provider"] == "oracle":
+    if config["db_provider"] == "mssql":
+        return _list_shared_data_mssql(username, data_filter)
+    elif config["db_provider"] == "oracle":
         return _list_shared_data_ora(username, data_filter)
     else:  # default
         return _list_shared_data_lite(username, data_filter)
@@ -295,28 +281,20 @@ def list_shared_data(username, data_filter=None):
 
 #
 # add a share entry into database
-# - require cx_Oracle
+# - require pymssql
 #
-def _share_data_ora(username, filename, shared_user):
-    None
-
-
-#
-# add a share entry into database
-# - require sqlite
-#
-def _share_data_lite(username, filename, shared_user):
-    if 'db_conn' not in config.keys():
+def _share_data_mssql(username, filename, shared_user):
+    if 'db_server' not in config.keys():
         return False
     if 'shared_insert' not in config.keys():
         return False
 
     try:
-        import sqlite3 as sqlite
+        import pymssql as mssql
         db_conn = None
         row_cur = None
         try:
-            db_conn = sqlite.connect(config['db_conn'])
+            db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             # insert a shared entry
             row_cur.execute(config['shared_insert'], {'owner': username,
@@ -327,7 +305,7 @@ def _share_data_lite(username, filename, shared_user):
             logging.info("share [%s] [%s] with [%s] "
                          % (username, filename, shared_user))
             return True
-        except sqlite.DatabaseError as e:
+        except mssql.DatabaseError as e:
             logging.error('error in share_data: ' + str(e))
             return False
         finally:
@@ -342,36 +320,27 @@ def _share_data_lite(username, filename, shared_user):
 
 
 def share_data(username, filename, shared_user):
-    if config["db_provider"] == "oracle":
-        return _share_data_ora(username, filename, shared_user)
+    if config["db_provider"] == "mssql":
+        return _share_data_mssql(username, filename, shared_user)
     else:  # default
         return _share_data_lite(username, filename, shared_user)
-
-
-#
-# delete a share entry from database
-# - require cx_Oracle
-#
-def _revoke_share_ora(username, filename, shared_user):
-    None
-
 
 #
 # delete a share entry from database
 # - require sqlite
 #
-def _revoke_share_lite(username, filename, shared_user):
-    if 'db_conn' not in config.keys():
+def _revoke_share_mssql(username, filename, shared_user):
+    if 'db_server' not in config.keys():
         return False
     if 'shared_delete' not in config.keys():
         return False
 
     try:
-        import sqlite3 as sqlite
+        import pymssql as mssql
         db_conn = None
         row_cur = None
         try:
-            db_conn = sqlite.connect(config['db_conn'])
+            db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             # insert a shared entry
             row_cur.execute(config['shared_delete'], {'owner': username,
@@ -381,7 +350,7 @@ def _revoke_share_lite(username, filename, shared_user):
             logging.info("remove share of [%s] [%s] from [%s] "
                          % (username, filename, shared_user))
             return True
-        except sqlite.DatabaseError as e:
+        except mssql.DatabaseError as e:
             logging.error('error in revoke_share: ' + str(e))
             return False
         finally:
@@ -396,36 +365,28 @@ def _revoke_share_lite(username, filename, shared_user):
 
 
 def revoke_share(username, filename, shared_user):
-    if config["db_provider"] == "oracle":
-        return _revoke_share_ora(username, filename, shared_user)
+    if config["db_provider"] == "mssql":
+        return _revoke_share_mssql(username, filename, shared_user)
     else:  # default
         return _revoke_share_lite(username, filename, shared_user)
 
 
 #
 # delete all share entries on a given file from database
-# - require cx_Oracle
-#
-def _revoke_all_shares_ora(username, filename):
-    None
-
-
-#
-# delete all share entries on a given file from database
 # - require sqlite
 #
-def _revoke_all_shares_lite(username, filename):
-    if 'db_conn' not in config.keys():
+def _revoke_all_shares_mssql(username, filename):
+    if 'db_server' not in config.keys():
         return False
     if 'shared_delete_all' not in config.keys():
         return False
 
     try:
-        import sqlite3 as sqlite
+        import pymssql as mssql
         db_conn = None
         row_cur = None
         try:
-            db_conn = sqlite.connect(config['db_conn'])
+            db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             # insert a shared entry
             row_cur.execute(config['shared_delete_all'], {'owner': username,
@@ -434,7 +395,7 @@ def _revoke_all_shares_lite(username, filename):
             logging.info("remove share of [%s] [%s] from all users "
                          % (username, filename))
             return True
-        except sqlite.DatabaseError as e:
+        except mssql.DatabaseError as e:
             logging.error('error in revoke_all_shares: ' + str(e))
             return False
         finally:
@@ -449,19 +410,15 @@ def _revoke_all_shares_lite(username, filename):
 
 
 def revoke_all_shares(username, filename):
-    if config["db_provider"] == "oracle":
-        return _revoke_all_shares_ora(username, filename)
+    if config["db_provider"] == "mssql":
+        return _revoke_all_shares_mssql(username, filename)
     else:  # default
         return _revoke_all_shares_lite(username, filename)
 
 
-#
-# add the cache registry into the database
-# - require cx_Oracle
-#
-def _register_cache_ora(username, filename, cache_file_path, data_name, status, total_row_count, cached_row_count):
+def _register_cache_mssql(username, filename, cache_file_path, data_name, status, total_row_count, cached_row_count):
 
-    if 'db_conn' not in config.keys():
+    if 'db_server' not in config.keys():
         return False
     if 'data_delete' not in config.keys():
         return False
@@ -473,58 +430,11 @@ def _register_cache_ora(username, filename, cache_file_path, data_name, status, 
         src_modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(src_file_path))
         src_file_size = os.path.getsize(src_file_path)
 
-        import cx_Oracle
+        import pymssql as mssql
         db_conn = None
         row_cur = None
         try:
-            db_conn = cx_Oracle.connect(config['db_conn'])
-            row_cur = db_conn.cursor()
-            # delete the old one
-            row_cur.prepare(config['data_delete'])
-            row_cur.execute(None, {'owner': username, 'src_file_path': filename})
-            # add the new one
-            row_cur.prepare(config['data_insert'])
-            row_cur.execute(None, {'owner': username, 'src_file_path': filename, 'cache_file_path': cache_file_path,
-                                   'data_name': data_name, 'upload_status': status,
-                                   'data_size': src_file_size,
-                                   'total_row_count': total_row_count, 'cached_row_count': cached_row_count,
-                                   'last_modified': src_modified_time, 'last_uploaded': datetime.datetime.now()})
-            db_conn.commit()
-            logging.info("register cache of [%s] [%s]: [%s]" % (username, filename, cache_file_path))
-            return True
-        except cx_Oracle.DatabaseError as e:
-            logging.error('error in register_cache: ' + str(e))
-            return False
-        finally:
-            if row_cur is not None:
-                row_cur.close()
-            if db_conn is not None:
-                db_conn.close()
-
-    except Exception as e:
-        logging.error('error in register_cache: ' + str(e))
-        return False
-
-
-def _register_cache_lite(username, filename, cache_file_path, data_name, status, total_row_count, cached_row_count):
-
-    if 'db_conn' not in config.keys():
-        return False
-    if 'data_delete' not in config.keys():
-        return False
-    if 'data_insert' not in config.keys():
-        return False
-
-    src_file_path = os.path.join(os.path.join(config['store'], username), filename)
-    try:
-        src_modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(src_file_path))
-        src_file_size = os.path.getsize(src_file_path)
-
-        import sqlite3 as sqlite
-        db_conn = None
-        row_cur = None
-        try:
-            db_conn = sqlite.connect(config['db_conn'])
+            db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             # delete the old one
             row_cur.execute(config['data_delete'], {'owner': username, 'src_file_path': filename})
@@ -542,7 +452,18 @@ def _register_cache_lite(username, filename, cache_file_path, data_name, status,
             db_conn.commit()
             logging.info("register cache of [%s] [%s]: [%s]" % (username, filename, cache_file_path))
             return True
-        except sqlite.DatabaseError as e:
+        except mssql.MssqlDriverException as e:
+            print("A MSSQLDriverException has been caught." + str(e))
+        except mssql.DatabaseError as e:
+            print("A MSSQLDatabaseException has been caught.")
+            print('Number = ',e.number)
+            print('Severity = ',e.severity)
+            print('State = ',e.state)
+            print('Message = ',e.message)
+        except mssql.DatabaseError as e:
+            logging.error('error in register_cache: ' + str(e))
+            return False
+        except Exception as e:
             logging.error('error in register_cache: ' + str(e))
             return False
         finally:
@@ -558,8 +479,8 @@ def _register_cache_lite(username, filename, cache_file_path, data_name, status,
 
 def _register_cache(username, filename, cache_file_path, data_name,
                     status='READY', total_row_count=0, cached_row_count=0):
-    if config["db_provider"] == "oracle":
-        return _register_cache_ora(username, filename, cache_file_path, data_name,
+    if config["db_provider"] == "mssql":
+        return _register_cache_mssql(username, filename, cache_file_path, data_name,
                                    status, total_row_count, cached_row_count)
     else:  # default
         return _register_cache_lite(username, filename, cache_file_path, data_name,
@@ -568,61 +489,22 @@ def _register_cache(username, filename, cache_file_path, data_name,
 
 #
 # get the data status from the cache registry
-# - require cx_Oracle
+# - require pymssql
 #
-def _get_status_ora(username, filename):
+def _get_status_mssql(username, filename):
 
-    if 'db_conn' not in config.keys():
+    if 'db_server' not in config.keys():
         return None
     if 'status_query' not in config.keys():
         return None
 
     try:
-        import cx_Oracle
+        import pymssql as mssql
         db_conn = None
         row_cur = None
         row = None
         try:
-            db_conn = cx_Oracle.connect(config['db_conn'])
-            row_cur = db_conn.cursor()
-            # query the status
-            row_cur.prepare(config['status_query'])
-            row_cur.execute(None, {'owner': username, 'src_file_path': filename})
-            row = row_cur.fetchone()
-            if row is not None:
-                return row[0]
-            else:
-                logging.info("no such entry [%s] [%s]" % (username, filename))
-                return None
-        except cx_Oracle.DatabaseError as e:
-            logging.error('error in get_status: ' + str(e))
-            return None
-        finally:
-            row = None
-            if row_cur is not None:
-                row_cur.close()
-            if db_conn is not None:
-                db_conn.close()
-
-    except Exception as e:
-        logging.error('error in get_status: ' + str(e))
-        return None
-
-
-def _get_status_lite(username, filename):
-
-    if 'db_conn' not in config.keys():
-        return None
-    if 'status_query' not in config.keys():
-        return None
-
-    try:
-        import sqlite3 as sqlite
-        db_conn = None
-        row_cur = None
-        row = None
-        try:
-            db_conn = sqlite.connect(config['db_conn'])
+            db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             # query the status
             row_cur.execute(config['status_query'], {'owner': username, 'src_file_path': filename})
@@ -632,7 +514,7 @@ def _get_status_lite(username, filename):
             else:
                 logging.info("no such entry [%s] [%s]" % (username, filename))
                 return None
-        except sqlite.DatabaseError as e:
+        except mssql.DatabaseError as e:
             logging.error('error in get_status: ' + str(e))
             return None
         finally:
@@ -648,8 +530,8 @@ def _get_status_lite(username, filename):
 
 
 def get_status(username, filename):
-    if config["db_provider"] == "oracle":
-        return _get_status_ora(username, filename)
+    if config["db_provider"] == "mssql":
+        return _get_status_mssql(username, filename)
     else:  # default
         return _get_status_lite(username, filename)
 
@@ -658,11 +540,11 @@ def get_status(username, filename):
 # compare the file stats with the metadata in the database
 # and check if the user file has been updated since last delivery
 # and get the path of the data cache
-# - require cx_Oracle
+# - require pymssql
 #
-def _get_cache_ora(username, filename):
+def _get_cache_mssql(username, filename):
 
-    if 'db_conn' not in config.keys():
+    if 'db_server' not in config.keys():
         return None
     if 'data_query' not in config.keys():
         return None
@@ -672,75 +554,13 @@ def _get_cache_ora(username, filename):
         src_modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(src_file_path))
         # src_file_size = os.path.getsize(src_file_path)
 
-        import cx_Oracle
-        db_conn = None
-        row_cur = None
-        try:
-            logging.debug("check the cache registry: " + config['db_conn'])
-            db_conn = cx_Oracle.connect(config['db_conn'])
-            row_cur = db_conn.cursor()
-            # update the last accessed time if any
-            row_cur.prepare(config['data_touch'])
-            row_cur.execute(None, {'owner': username, 'src_file_path': filename,
-                                   'last_accessed': datetime.datetime.now()})
-            db_conn.commit()
-            # query the cache registry
-            row_cur.prepare(config['data_query'])
-            row_cur.execute(None, {'owner': username, 'src_file_path': filename})
-            row = row_cur.fetchone()  # user_name and file_name are made up as Primary key
-            if row is not None:
-                last_modified_date = row[0]
-                cache_file_paths_string = str(row[1])
-                if last_modified_date is not None and cache_file_paths_string is not None:
-                    time_delta = src_modified_time - last_modified_date
-                    logging.debug("the cache expires by " + str(time_delta))
-                    if abs(time_delta.total_seconds()) < 1:
-                        cache_file_paths = cache_file_paths_string.split(FILE_PATH_SEP)
-                        cache_exists = True
-                        for file_path in cache_file_paths:
-                            cache_exists = cache_exists and os.path.exists(file_path)
-                            if not cache_exists:
-                                logging.debug("the cache file not found at " + file_path)
-                                break
-                        if cache_exists:
-                            logging.info("valid cache of [%s] [%s]: [%s]"
-                                         % (username, filename, cache_file_paths_string))
-                            return cache_file_paths_string
-            return None
-        except cx_Oracle.DatabaseError as e:
-            logging.error('error in get_cache: ' + str(e))
-            return None
-        finally:
-            row = None
-            if row_cur is not None:
-                row_cur.close()
-            if db_conn is not None:
-                db_conn.close()
-
-    except Exception as e:
-        logging.error('error in get_cache: ' + str(e))
-        return None
-
-
-def _get_cache_lite(username, filename):
-
-    if 'db_conn' not in config.keys():
-        return None
-    if 'data_query' not in config.keys():
-        return None
-
-    src_file_path = os.path.join(os.path.join(config['store'], username), filename)
-    try:
-        src_modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(src_file_path))
-        # src_file_size = os.path.getsize(src_file_path)
-
-        import sqlite3 as sqlite
+        import pymssql as mssql
         db_conn = None
         row_cur = None
         row = None
         try:
-            logging.debug("check the cache registry: " + config['db_conn'])
-            db_conn = sqlite.connect(config['db_conn'])
+            logging.debug("check the cache registry: " + config['db_server'])
+            db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             row_cur.execute(config['data_touch'], {'owner': username, 'src_file_path': filename,
                                                    'last_accessed': datetime.datetime.now()})
@@ -748,12 +568,12 @@ def _get_cache_lite(username, filename):
             row_cur.execute(config['data_query'], {'owner': username, 'src_file_path': filename})
             row = row_cur.fetchone()  # user_name and file_name are made up as Primary key
             if row is not None:
-                # ignore the millisecond
-                last_modified_date = datetime.datetime.strptime(row[0].split('.')[0], "%Y-%m-%d %H:%M:%S")
+                # pymssql driver returns datetime.datetime
+                last_modified_date = row[0]
                 cache_file_paths_string = str(row[1])
                 if last_modified_date is not None and cache_file_paths_string is not None:
                     time_delta = src_modified_time - last_modified_date
-                    logging.debug("the cache expires by " + str(time_delta))
+                    logging.debug("the cache expires by %f" % time_delta.total_seconds())
                     if abs(time_delta.total_seconds()) < 1:
                         cache_file_paths = cache_file_paths_string.split(FILE_PATH_SEP)
                         cache_exists = True
@@ -767,7 +587,7 @@ def _get_cache_lite(username, filename):
                                          % (username, filename, cache_file_paths_string))
                             return cache_file_paths_string
             return None
-        except sqlite.DatabaseError as e:
+        except mssql.DatabaseError as e:
             logging.error('error in get_cache: ' + str(e))
             return None
         finally:
@@ -783,8 +603,8 @@ def _get_cache_lite(username, filename):
 
 
 def _get_cache(username, filename):
-    if config["db_provider"] == "oracle":
-        return _get_cache_ora(username, filename)
+    if config["db_provider"] == "mssql":
+        return _get_cache_mssql(username, filename)
     else:  # default
         return _get_cache_lite(username, filename)
 
@@ -816,9 +636,9 @@ def _archive_data_file(username, filename):
 #
 # archive a data file, including its cache registry
 #
-def _archive_data_ora(username, filename, archive_file_path, retain_style=False):
+def _archive_data_mssql(username, filename, archive_file_path, retain_style=False):
 
-    if 'db_conn' not in config.keys():
+    if 'db_server' not in config.keys():
         return False
     if 'data_archive' not in config.keys():
         return False
@@ -828,65 +648,11 @@ def _archive_data_ora(username, filename, archive_file_path, retain_style=False)
         return False
 
     try:
-        import cx_Oracle
+        import pymssql as mssql
         db_conn = None
         row_cur = None
         try:
-            db_conn = cx_Oracle.connect(config['db_conn'])
-            row_cur = db_conn.cursor()
-            if archive_file_path is None:
-                logging.info("delete the orphan registry (source file is missing)")
-            else:
-                # move the registry to the archived table
-                row_cur.prepare(config['data_archive'])
-                row_cur.execute(None, {'owner': username,
-                                       'src_file_path': filename,
-                                       'arv_file_path': archive_file_path,
-                                       'archived': datetime.datetime.now()})
-            row_cur.prepare(config['data_delete'])
-            row_cur.execute(None, {'owner': username,
-                                   'src_file_path': filename})
-            # delete the associated style record
-            if retain_style is False:
-                row_cur.prepare(config['style_delete'])
-                row_cur.execute(None, {'owner': username,
-                                       'src_file_path': filename})
-            # commit changes
-            db_conn.commit()
-            logging.info("archived [%s] [%s] into [%s] (style %s deleted)"
-                         % (username, filename, archive_file_path, ("not" if retain_style is True else "is")))
-            return True
-        except cx_Oracle.DatabaseError as e:
-            logging.error('error in archive_data: ' + str(e))
-            return False
-        finally:
-            if row_cur is not None:
-                row_cur.close()
-            if db_conn is not None:
-                db_conn.close()
-
-    except Exception as e:
-        logging.error('error in archive_data: ' + str(e))
-        return False
-
-
-def _archive_data_lite(username, filename, archive_file_path, retain_style=False):
-
-    if 'db_conn' not in config.keys():
-        return False
-    if 'data_archive' not in config.keys():
-        return False
-    if 'data_delete' not in config.keys():
-        return False
-    if retain_style is True and 'style_delete' not in config.keys():
-        return False
-
-    try:
-        import sqlite3 as sqlite
-        db_conn = None
-        row_cur = None
-        try:
-            db_conn = sqlite.connect(config['db_conn'])
+            db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             if archive_file_path is None:
                 logging.info("delete the orphan registry (source file is missing)")
@@ -907,7 +673,7 @@ def _archive_data_lite(username, filename, archive_file_path, retain_style=False
             logging.info("archived [%s] [%s] into [%s] (style %s deleted)"
                          % (username, filename, archive_file_path, ("not" if retain_style is True else "is")))
             return True
-        except sqlite.DatabaseError as e:
+        except mssql.DatabaseError as e:
             logging.error('error in archive_data: ' + str(e))
             return False
         finally:
@@ -924,8 +690,8 @@ def _archive_data_lite(username, filename, archive_file_path, retain_style=False
 def archive_data(username, filename, retain_style=False):
     archive_file_path = _archive_data_file(username, filename)
 
-    if config["db_provider"] == "oracle":
-        return _archive_data_ora(username, filename, archive_file_path, retain_style)
+    if config["db_provider"] == "mssql":
+        return _archive_data_mssql(username, filename, archive_file_path, retain_style)
     else:  # default
         return _archive_data_lite(username, filename, archive_file_path, retain_style)
 
@@ -933,51 +699,18 @@ def archive_data(username, filename, retain_style=False):
 #
 # update the user-defined name (data_name)
 #
-def _rename_data_ora(username, filename, new_data_name):
-    if 'db_conn' not in config.keys():
+def _rename_data_mssql(username, filename, new_data_name):
+    if 'db_server' not in config.keys():
         return False
     if 'data_rename' not in config.keys():
         return False
 
     try:
-        import cx_Oracle
+        import pymssql as mssql
         db_conn = None
         row_cur = None
         try:
-            db_conn = cx_Oracle.connect(config['db_conn'])
-            row_cur = db_conn.cursor()
-            # update the existing one
-            row_cur.prepare(config['data_rename'])
-            row_cur.execute(None, {'owner': username, 'src_file_path': filename, 'data_name': new_data_name})
-            db_conn.commit()
-            logging.info("rename [%s] [%s] to [%s]" % (username, filename, new_data_name))
-            return True
-        except cx_Oracle.DatabaseError as e:
-            logging.error('error in rename_data: ' + str(e))
-            return False
-        finally:
-            if row_cur is not None:
-                row_cur.close()
-            if db_conn is not None:
-                db_conn.close()
-
-    except Exception as e:
-        logging.error('error in rename_data: ' + str(e))
-        return False
-
-
-def _rename_data_lite(username, filename, new_data_name):
-    if 'db_conn' not in config.keys():
-        return False
-    if 'data_rename' not in config.keys():
-        return False
-
-    try:
-        import sqlite3 as sqlite
-        db_conn = None
-        row_cur = None
-        try:
-            db_conn = sqlite.connect(config['db_conn'])
+            db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             # update the existing one
             row_cur.execute(config['data_rename'], {'owner': username,
@@ -986,7 +719,7 @@ def _rename_data_lite(username, filename, new_data_name):
             db_conn.commit()
             logging.info("rename [%s] [%s] to [%s]" % (username, filename, new_data_name))
             return True
-        except sqlite.DatabaseError as e:
+        except mssql.DatabaseError as e:
             logging.error('error in rename_data: ' + str(e))
             return False
         finally:
@@ -1005,8 +738,8 @@ def rename_data(username, filename, new_data_name):
         print '{"error": "empty data name", "scope":"request"}'
         return False
 
-    if config["db_provider"] == "oracle":
-        return _rename_data_ora(username, filename, new_data_name)
+    if config["db_provider"] == "mssql":
+        return _rename_data_mssql(username, filename, new_data_name)
     else:  # default
         return _rename_data_lite(username, filename, new_data_name)
 
@@ -1015,58 +748,20 @@ def rename_data(username, filename, new_data_name):
 # get the data style (drawing_info)
 # return drawing_info
 #
-def _get_style_ora(username, filename):
-    if 'db_conn' not in config.keys():
+def _get_style_mssql(username, filename):
+    if 'db_server' not in config.keys():
         return False
     if 'style_query' not in config.keys():
         return False
 
     try:
-        import cx_Oracle
+        import pymssql as mssql
         db_conn = None
         row_cur = None
         row = None
         drawing_info = None
         try:
-            db_conn = cx_Oracle.connect(config['db_conn'])
-            row_cur = db_conn.cursor()
-            # check if there is already one
-            row_cur.prepare(config['style_query'])
-            row_cur.execute(None, {'owner': username, 'src_file_path': filename})
-            row = row_cur.fetchone()  # user_name and file_name are made up as Primary key
-            if row is not None:
-                drawing_info = row[0]
-            logging.info("get the style of [%s] [%s]: [%s]" % (username, filename, drawing_info))
-            return drawing_info
-        except cx_Oracle.DatabaseError as e:
-            logging.error('error in get_style: ' + str(e))
-            return drawing_info
-        finally:
-            row = None
-            if row_cur is not None:
-                row_cur.close()
-            if db_conn is not None:
-                db_conn.close()
-
-    except Exception as e:
-        logging.error('error in get_style: ' + str(e))
-        return False
-
-
-def _get_style_lite(username, filename):
-    if 'db_conn' not in config.keys():
-        return False
-    if 'style_query' not in config.keys():
-        return False
-
-    try:
-        import sqlite3 as sqlite
-        db_conn = None
-        row_cur = None
-        row = None
-        drawing_info = None
-        try:
-            db_conn = sqlite.connect(config['db_conn'])
+            db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             # check if there is already one
             row_cur.execute(config['style_query'], {'owner': username, 'src_file_path': filename})
@@ -1075,7 +770,7 @@ def _get_style_lite(username, filename):
                 drawing_info = row[0]
             logging.info("get the style of [%s] [%s]: [%s]" % (username, filename, drawing_info))
             return drawing_info
-        except sqlite.DatabaseError as e:
+        except mssql.DatabaseError as e:
             logging.error('error in get_style: ' + str(e))
             return drawing_info
         finally:
@@ -1091,17 +786,14 @@ def _get_style_lite(username, filename):
 
 
 def get_style(username, filename):
-    if config["db_provider"] == "oracle":
-        return _get_style_ora(username, filename)
+    if config["db_provider"] == "mssql":
+        return _get_style_mssql(username, filename)
     else:  # default
         return _get_style_lite(username, filename)
 
 
-#
-# set the data style (drawing_info)
-#
-def _set_style_ora(username, filename, drawing_info):
-    if 'db_conn' not in config.keys():
+def _set_style_mssql(username, filename, drawing_info):
+    if 'db_server' not in config.keys():
         return False
     if 'style_query' not in config.keys():
         return False
@@ -1111,61 +803,12 @@ def _set_style_ora(username, filename, drawing_info):
         return False
 
     try:
-        import cx_Oracle
+        import pymssql as mssql
         db_conn = None
         row_cur = None
         row = None
         try:
-            db_conn = cx_Oracle.connect(config['db_conn'])
-            row_cur = db_conn.cursor()
-            # check if there is already one
-            row_cur.prepare(config['style_query'])
-            row_cur.execute(None, {'owner': username, 'src_file_path': filename})
-            row = row_cur.fetchone()  # user_name and file_name are made up as Primary key
-            if row is not None:
-                # update the existing one
-                row_cur.prepare(config['style_update'])
-                row_cur.execute(None, {'owner': username, 'src_file_path': filename, 'drawing_info': drawing_info})
-            else:
-                # insert a new one
-                row_cur.prepare(config['style_insert'])
-                row_cur.execute(None, {'owner': username, 'src_file_path': filename, 'drawing_info': drawing_info})
-            # commit changes
-            db_conn.commit()
-            logging.info("set the style of [%s] [%s]: [%s]" % (username, filename, drawing_info))
-            return True
-        except cx_Oracle.DatabaseError as e:
-            logging.error('error in set_style: ' + str(e))
-            return False
-        finally:
-            row = None
-            if row_cur is not None:
-                row_cur.close()
-            if db_conn is not None:
-                db_conn.close()
-
-    except Exception as e:
-        logging.error('error in set_style: ' + str(e))
-        return False
-
-
-def _set_style_lite(username, filename, drawing_info):
-    if 'db_conn' not in config.keys():
-        return False
-    if 'style_query' not in config.keys():
-        return False
-    if 'style_insert' not in config.keys():
-        return False
-    if 'style_update' not in config.keys():
-        return False
-
-    try:
-        import sqlite3 as sqlite
-        db_conn = None
-        row_cur = None
-        row = None
-        try:
-            db_conn = sqlite.connect(config['db_conn'])
+            db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             # check if there is already one
             row_cur.execute(config['style_query'], {'owner': username, 'src_file_path': filename})
@@ -1185,7 +828,7 @@ def _set_style_lite(username, filename, drawing_info):
 
             logging.info("set the style of [%s] [%s]: [%s]" % (username, filename, drawing_info))
             return True
-        except sqlite.DatabaseError as e:
+        except mssql.DatabaseError as e:
             logging.error('error in set_style: ' + str(e))
             return False
         finally:
@@ -1201,8 +844,8 @@ def _set_style_lite(username, filename, drawing_info):
 
 
 def set_style(username, filename, drawing_info):
-    if config["db_provider"] == "oracle":
-        return _set_style_ora(username, filename, drawing_info)
+    if config["db_provider"] == "mssql":
+        return _set_style_mssql(username, filename, drawing_info)
     else:  # default
         return _set_style_lite(username, filename, drawing_info)
 
@@ -1248,7 +891,9 @@ def _write_features_json(datapath, json_file_path):
     logging.info("output features to json [%s]" % json_file_path)
     arcpy.FeaturesToJSON_conversion(datapath, json_file_path)  # , "FORMATTED"
 
-
+#
+# output features in json
+#
 def _output_feature_json(json_file_paths, output_name=None):
     count = 0
     print "["
@@ -1261,6 +906,48 @@ def _output_feature_json(json_file_paths, output_name=None):
                 print txtline
         count += 1
     print "]"
+
+
+#
+# TODO: support the featurecollection format
+#
+def _convert_to_featurecoll(stg_json_paths, carto_styles_array, data_despt, data_name, cache_json_path):
+    count = 0
+    # featureCollection
+    featureColl = {"showLegend": "true", "layers": []}
+    # convert each file
+    import json
+    for file_path in json_file_paths:
+        logging.info("load json from the cache file [%s]" % file_path)
+        with open(file_path, "r") as json_file:
+            cacheData = json.load(json_file)
+            layerObj = {"featureSet": {
+                "spatialReference": cacheData["spatialReference"],
+                "geometryType": cacheData["geometryType"],
+                "features": cacheData["features"]
+            }, "layerDefinition": {
+                "currentVersion": "10.61",
+                "id": count,
+                "dislayField": cacheData["displayFieldName"],
+                "objectIdField": data_despt.OIDFieldName,
+                "hasM": data_despt.hasM,
+                "hasZ": data_despt.hasZ,
+                "isDataVersioned": data_despt.isVersioned,
+                "fields": cacheData["fields"],
+                "geometryType": cacheData["geometryType"],
+                "extent": data_despt.extent(),
+                "name": output_name,
+                "type": "Feature Layer",
+                "drawingInfo": carto_styles_array[count],
+                "htmlPopupType": "esriServerHTMLPopupTypeNone",
+                "defaultVisibility": "true",
+                "capabilities": "Query",
+                "supportedQueryFormat"
+            }}
+        count += 1
+    # write featurecollection into a file
+    with open(cache_json_path, "w") as outfile:
+        json.dump(data, outfile)
 
 
 # create a layer of features fewer than the defined max number of rows
@@ -1361,6 +1048,8 @@ def _prepare_data(username, filename):
     carto_styles_string = get_style(username, filename)
     carto_styles_array = []
 
+    data_despt_arry = []
+
     if fext == ".zip":  # zipped shapefile
         # unzip the zip file
         logging.info("unzip file [%s] to [%s]" % (src_file_path, stg_folder))
@@ -1386,6 +1075,7 @@ def _prepare_data(username, filename):
             logging.info("unzipped shape file [%s]" % stg_data_path)
 
         data_despt = arcpy.Describe(stg_data_path)
+        data_despt_arry.append(data_despt)
         # assign default symbology
         if carto_styles_string is None:
             carto_styles_array.append(_get_default_style(data_despt.shapeType))
@@ -1416,8 +1106,8 @@ def _prepare_data(username, filename):
         stg_data_path = os.path.join(stg_fgdb_path, fname_norm)
         arcpy.GPXtoFeatures_conversion(src_file_path, stg_data_path)
 
-        # transform or project to the standard spatial ref
         data_despt = arcpy.Describe(stg_data_path)
+        data_despt_arry.append(data_despt)
         # assign default symbology
         if carto_styles_string is None:
             carto_styles_array.append(_get_default_style(data_despt.shapeType))
@@ -1461,9 +1151,10 @@ def _prepare_data(username, filename):
         # check the addr/loc columns
         if "latitude" not in csv_qualifiers.keys() or "longitude" not in csv_qualifiers.keys():
             logging.info("found no latitude or longitude column in csv [%s]" % src_file_path)
-            if "address" not in csv_qualifiers.keys():
-                logging.error("found no address column in csv [%s]" % src_file_path)
-                # TODO: error out
+            if not ("address" in csv_qualifiers.keys() or "zipcode" in csv_qualifiers.keys()):
+                logging.error("found no address or zipcode column in csv [%s]" % src_file_path)
+                # error out because no data can be spatialized
+                raise Exception('no column can be transformed to a spatial shape')
             else:
                 # geocode each row
                 logging.info("geocode address in csv [%s]" % src_file_path)
@@ -1487,6 +1178,8 @@ def _prepare_data(username, filename):
                                 csv_writer.writerow(data_fields)
 
                 src_file_path = csv_filepath_gc
+                csv_qualifiers['latitude'] = {'index': len(csv_headers)-2, "name": 'latitude'}
+                csv_qualifiers['longitude'] = {'index': len(csv_headers)-1, "name": 'longitude'}
 
         # make file-gdb as a staging db
         if not arcpy.Exists(stg_fgdb_path):
@@ -1498,7 +1191,10 @@ def _prepare_data(username, filename):
         csv_layer_name = fname_norm + "_csv_layer"
         if src_spatial_ref is None:
             src_spatial_ref = output_spatial_ref
-        arcpy.MakeXYEventLayer_management(src_file_path, "longitude", "latitude",
+
+        # accommodate the varieties of the latitude/longitude columns
+        #arcpy.MakeXYEventLayer_management(src_file_path, "longitude", "latitude",
+        arcpy.MakeXYEventLayer_management(src_file_path, csv_qualifiers['longitude']['name'], csv_qualifiers['latitude']['name'],
                                           csv_layer_name, src_spatial_ref)
 
         stg_data_path = os.path.join(stg_fgdb_path, fname_norm)
@@ -1531,6 +1227,9 @@ def _prepare_data(username, filename):
             arcpy.Project_management(stg_data_path, stg_prep_file_path, output_spatial_ref,
                                      TRANSFORMATION_LIST["NAD83_to_WGS84"])
             stg_data_path = stg_prep_file_path
+            data_despt = arcpy.Describe(stg_data_path)
+
+        data_despt_arry.append(data_despt)
 
         # output features to json
         stg_json_path_string = os.path.join(cache_folder, fname + ".json")
@@ -1592,7 +1291,12 @@ def _prepare_data(username, filename):
     if carto_styles_string is None:
         carto_styles_string = "[" + ",".join(carto_styles_array) + "]"
 
-    return stg_json_path_string, carto_styles_string, total_row_count, filtered_row_count
+    # transform json into featureCollection
+    cache_json_path = os.path.join(cache_folder, "%s_%s.json" % (fname, "featurecoll"))
+    _convert_to_featurecoll(stg_json_paths, carto_styles_array, data_despt, fname, cache_json_path)
+
+    #return stg_json_path_string, carto_styles_string, total_row_count, filtered_row_count
+    return cache_json_path, carto_styles_string, total_row_count, filtered_row_count
 
 
 #
@@ -1660,14 +1364,14 @@ def _list_files(username, data_filter=None):
 # list all data files belonging to a given user
 # (from data registry table in database)
 #
-def _list_data_ora(username, data_filter=None):
-    if 'db_conn' not in config.keys():
+def _list_data_mssql(username, data_filter=None):
+    if 'db_server' not in config.keys():
         return None
     if 'data_list' not in config.keys():
         return None
 
     try:
-        import cx_Oracle
+        import pymssql as mssql
         db_conn = None
         row_cur = None
 
@@ -1675,60 +1379,7 @@ def _list_data_ora(username, data_filter=None):
         print '['
         try:
             logging.debug("list all data files owned by " + username)
-            db_conn = cx_Oracle.connect(config['db_conn'])
-            row_cur = db_conn.cursor()
-            row_cur.prepare(config['data_list'])
-            row_cur.execute(None, {'owner': username})
-            for row in row_cur:
-                src_file_path = row[0]
-                data_name = row[1]
-                data_size = row[2]
-                last_modified = row[3]
-                last_uploaded = row[4]
-                upload_status = row[5]
-                total_row_count = 0 if row[6] is None else row[6]
-                cached_row_count = 0 if row[7] is None else row[7]
-                drawing_info = "null" if (row[8] is None or len(row[8].strip()) == 0) else row[8]
-
-                if count > 0:
-                    print ','
-                print '{"src_file_path":"%s", "data_name":"%s", "size":%s, "last_modified":"%s", "last_uploaded":"%s", "upload_status":"%s", "total_row_count":%s, "cached_row_count":%s, "drawing_info":%s}' \
-                      % (src_file_path, data_name, data_size, last_modified.strftime("%Y-%m-%d %H:%M:%S"),
-                         last_uploaded.strftime("%Y-%m-%d %H:%M:%S"),
-                         upload_status, total_row_count, cached_row_count, drawing_info)
-                count += 1
-        except cx_Oracle.DatabaseError as e:
-            logging.error('error in list_data: ' + str(e))
-            return None
-        finally:
-            print ']'
-            row = None
-            if row_cur is not None:
-                row_cur.close()
-            if db_conn is not None:
-                db_conn.close()
-
-    except Exception as e:
-        logging.error('error in list_data: ' + str(e))
-        return None
-
-
-def _list_data_lite(username, data_filter=None):
-    if 'db_conn' not in config.keys():
-        return None
-    if 'data_list' not in config.keys():
-        return None
-
-    try:
-        import sqlite3 as sqlite
-        db_conn = None
-        row_cur = None
-
-        count = 0
-        print '['
-        try:
-            logging.debug("list all data files owned by " + username)
-            db_conn = sqlite.connect(config['db_conn'])
+            db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             row_cur.execute(config['data_list'], {'owner': username})
             for row in row_cur:
@@ -1748,7 +1399,10 @@ def _list_data_lite(username, data_filter=None):
                       % (src_file_path, data_name, data_size, last_modified, last_uploaded,
                          upload_status, total_row_count, cached_row_count, drawing_info)
                 count += 1
-        except sqlite.DatabaseError as e:
+        except mssql.DatabaseError as e:
+            logging.error('error in list_data: ' + str(e))
+            return None
+        except Exception as e:
             logging.error('error in list_data: ' + str(e))
             return None
         finally:
@@ -1765,8 +1419,8 @@ def _list_data_lite(username, data_filter=None):
 
 
 def list_data(username, data_filter=None):
-    if config["db_provider"] == "oracle":
-        return _list_data_ora(username, data_filter)
+    if config["db_provider"] == "mssql":
+        return _list_data_mssql(username, data_filter)
     else:  # default
         return _list_data_lite(username, data_filter)
 
@@ -1918,145 +1572,70 @@ class TestDataLibrarian(unittest.TestCase):
         _list_files("imaps")
         print "##### list_files('imaps') #####"
 
-        print "***** list_files('kdb086') *****"
-        _list_files("kdb086")
-        print "##### list_files('kdb086') #####"
-
     def test_list_data(self):
 
         print "***** list_data('imaps') *****"
         list_data("imaps")
         print "##### list_data('imaps') #####"
 
-        print "***** list_data('kdb086') *****"
-        list_data("kdb086")
-        print "##### list_data('kdb086') #####"
-
-    def test_cache_registry(self):
-
-        print "***** _register_cache('imaps') *****"
-        _register_cache("imaps", "Wells_Active.csv", r"cache\Wells_Active.json", "Wells_Active")
-        print "##### _register_cache('imaps') #####"
-
-        print "***** _is_cached('imaps') *****"
-        result = _get_cache("imaps", "Wells_Active.csv")
-        assert result is None
-        print "##### _is_cached('imaps') #####"
-
-        print "***** _register_cache('kdb086') *****"
-        _register_cache("kdb086", "earthquakes.csv", r"cache\earthquakes.json", "earthquakes")
-        print "##### _register_cache('kdb086') #####"
-
-        print "***** _is_cached('kdb086') *****"
-        result = _get_cache("kdb086", "earthquakes.csv")
-        # assert result == r'C:\Users\kdb086\Projects\CgiPythonProject\data_stage\kdb086\cache\earthquakes.json'
-        assert result is None
-        print "##### _is_cached('kdb086') #####"
-
-        print "***** _is_cached('imaps') *****"
-        result = _get_cache("imaps", "wells.csv")
-        assert result is None
-        print "##### _is_cached('imaps') #####"
-
     def test_get_data_imap(self):
 
-        print "***** get_data('imaps', 'Wells_Active!^ - Copy.csv') *****"
-        get_data("imaps", "Wells_Active!^ - Copy.csv")
-        print "##### get_data('imaps', 'Wells_Active!^ - Copy.csv') #####"
+        print "***** get_data('imaps', 'earthquakes!^ last_month.csv') *****"
+        get_data("imaps", "earthquakes!^ last_month.csv")
+        print "##### get_data('imaps', 'earthquakes!^ last_month.csv') #####"
 
-        print "***** get_data('imaps', 'Wells_Active.csv') *****"
-        get_data("imaps", "Wells_Active.csv")
-        print "##### get_data('imaps', 'Wells_Active.csv') #####"
+        print "***** get_data('imaps', 'Earthquakes1970.zip') *****"
+        get_data("imaps", "Earthquakes1970.zip")
+        print "##### get_data('imaps', 'Earthquakes1970.zip') #####"
 
-        print "***** get_data('imaps', 'DoesNotWork.zip') *****"
-        get_data("imaps", "DoesNotWork.zip")
-        print "##### get_data('imaps', 'DoesNotWork.zip') #####"
+        print "***** get_data('imaps', 'Public_School_Locations.zip') *****"
+        get_data("imaps", "Public_School_Locations.zip")
+        print "##### get_data('imaps', 'Public_School_Locations.zip') #####"
 
-        print "***** get_data('imaps', 'APC(DoesNotWork).zip') *****"
-        get_data("imaps", "APC(DoesNotWork).zip")
-        print "##### get_data('imaps', 'APC(DoesNotWork).zip') #####"
-
-        print "***** get_data('imaps', 'wells.zip') *****"
-        get_data("imaps", "wells.zip")
-        print "##### get_data('imaps', 'wells.zip') #####"
-
-        print "***** get_data('imaps', 'test.gpx') *****"
-        get_data("imaps", "test.gpx")
-        print "##### get_data('imaps', 'test.gpx') #####"
+        print "***** get_data('imaps', 'KFC_2019_73_.gpx') *****"
+        get_data("imaps", "KFC_2019_73_.gpx")
+        print "##### get_data('imaps', 'KFC_2019_73_.gpx') #####"
 
         print "***** get_data('imaps', 'KML_Samples.kml') *****"
         get_data("imaps", "KML_Samples.kml")
         print "##### get_data('imaps', 'KML_Samples.kml') #####"
 
-    def test_get_data_kdb086(self):
+        print "***** get_data('imaps', 'Oil_Spill.kmz') *****"
+        get_data("imaps", "Oil_Spill.kmz")
+        print "##### get_data('imaps', 'Oil_Spill.kmz') #####"
 
-        print "***** get_data('kdb086', 'earthquakes.csv') *****"
-        get_data("kdb086", "earthquakes.csv")
-        print "##### get_data('kdb086', 'earthquakes.csv') #####"
+        print "***** get_data('imaps', 'significant earthquakes of last month.csv') *****"
+        get_data("imaps", "significant earthquakes of last month.csv")
+        print "##### get_data('imaps', 'significant earthquakes of last month.csv') #####"
 
-        print "***** get_data('kdb086', 'testShpFile.zip') *****"
-        get_data("kdb086", "testShpFile.zip")
-        print "##### get_data('kdb086', 'testShpFile.zip') #####"
+##        print "***** get_data('imaps', 'High_Schools.csv') *****"
+##        get_data("imaps", "High_Schools.csv")
+##        print "##### get_data('imaps', 'High_Schools.csv') #####"
 
-        print "***** get_data('kdb086', 'KFC__62__2015.gpx') *****"
-        get_data("kdb086", "KFC__62__2015.gpx")
-        print "##### get_data('kdb086', 'KFC__62__2015.gpx') #####"
 
-        print "***** get_data('kdb086', 'KML_Samples.kml') *****"
-        get_data("kdb086", "KML_Samples.kml")
-        print "##### get_data('kdb086', 'KML_Samples.kml') #####"
-
-        print "***** get_data('kdb086', 'HighSchools.kmz') *****"
-        get_data("kdb086", "HighSchools.kmz")
-        print "##### get_data('kdb086', 'HighSchools.kmz') #####"
-
-    def test_get_data_kml(self):
-
-        print "***** get_data('kdb086', 'HighSchools.kmz') *****"
-        get_data("kdb086", "HighSchools.kmz")
-        print "##### get_data('kdb086', 'HighSchools.kmz') #####"
-
-        print "***** get_data('kdb086', 'KML_Samples.kml') *****"
-        get_data("kdb086", "KML_Samples.kml")
-        print "##### get_data('kdb086', 'KML_Samples.kml') #####"
-
-    def test_get_data_big(self):
-
-        print "***** get_data('kdb086', 'APC_Equipment_Less1.zip') *****"
-        get_data("kdb086", "APC_Equipment_Less1.zip")
-        print "##### get_data('kdb086', 'APC_Equipment_Less1.zip') #####"
-
-        print "***** get_data('kdb086', 'APC_Equipment_Less2.zip') *****"
-        get_data("kdb086", "APC_Equipment_Less2.zip")
-        print "##### get_data('kdb086', 'APC_Equipment_Less2.zip') #####"
-
-        print "***** get_data('kdb086', 'APC_Equipment.zip') *****"
-        get_data("kdb086", "APC_Equipment.zip")
-        print "##### get_data('kdb086', 'APC_Equipment.zip') #####"
-
-    def test_get_status(self):
-
-        print "***** get_status('kdb086', 'KML_Samples.kml') *****"
-        get_status("kdb086", "KML_Samples.kml")
-        print "##### get_status('kdb086', 'KML_Samples.kml') #####"
-
-        print "***** get_status('kdb086', 'earthquakes.csv') *****"
-        get_status("kdb086", "earthquakes.csv")
-        print "##### get_status('kdb086', 'earthquakes.csv') #####"
+##    def test_get_status(self):
+##
+##        print "***** get_status('imaps', 'KML_Samples.kml') *****"
+##        get_status("imaps", "KML_Samples.kml")
+##        print "##### get_status('imaps', 'KML_Samples.kml') #####"
+##
+##        print "***** get_status('imaps', 'earthquakes.csv') *****"
+##        get_status("imaps", "earthquakes.csv")
+##        print "##### get_status('imaps', 'earthquakes.csv') #####"
 
     def test_archive_data(self):
 
-        print "***** get_data('kdb086', 'HighSchools.kmz') *****"
-        get_data("kdb086", "HighSchools.kmz")
-        print "##### get_data('kdb086', 'HighSchools.kmz') #####"
+        print "***** get_data('imaps', 'Oil_Spill.kmz') *****"
+        get_data("imaps", "Oil_Spill.kmz")
+        print "##### get_data('imaps', 'Oil_Spill.kmz') #####"
 
-        print "***** archive_data('kdb086', 'HighSchools.kmz') *****"
-        archive_data("kdb086", "HighSchools.kmz")
-        print "##### archive_data('kdb086', 'HighSchools.kmz') #####"
+        print "***** archive_data('imaps', 'Oil_Spill.kmz') *****"
+        archive_data("imaps", "Oil_Spill.kmz")
+        print "##### archive_data('imaps', 'Oil_Spill.kmz') #####"
 
-        print "***** get_data('kdb086', 'HighSchools.kmz') *****"
-        get_data("kdb086", "HighSchools.kmz")
-        print "##### get_data('kdb086', 'HighSchools.kmz') #####"
+        print "***** get_data('imaps', 'Oil_Spill.kmz') *****"
+        get_data("imaps", "Oil_Spill.kmz")
+        print "##### get_data('imaps', 'Oil_Spill.kmz') #####"
 
     def test_rename_data(self):
 
@@ -2064,35 +1643,27 @@ class TestDataLibrarian(unittest.TestCase):
         list_data("imaps")
         print "##### list_data('imaps') #####"
 
-        print "***** rename_data('imaps', 'DoesNotWork.zip', 'Worked actually') *****"
-        rename_data("imaps", "DoesNotWork.zip", "Worked actually")
-        print "##### rename_data('imaps', 'DoesNotWork.zip', 'Worked actually') #####"
+        print "***** rename_data('imaps', 'Public_School_Locations.zip', 'Public Schools') *****"
+        rename_data("imaps", "Public_School_Locations.zip", "Public Schools")
+        print "##### rename_data('imaps', 'Public_School_Locations.zip', 'Public Schools') #####"
 
         print "***** list_data('imaps') *****"
         list_data("imaps")
         print "##### list_data('imaps') #####"
 
-    def test_style_data(self):
-
-        print "***** list_data('kdb086') *****"
-        list_data("kdb086")
-        print "##### list_data('kdb086') #####"
-
-        print "***** get_style('kdb086', 'earthquakes.csv') *****"
-        get_style('kdb086', 'earthquakes.csv')
-        print "##### get_style('kdb086', 'earthquakes.csv') #####"
-
-        print "***** set_style('kdb086', 'earthquakes.csv', 'new drawing info') *****"
-        set_style('kdb086', 'earthquakes.csv', 'new drawing info')
-        print "##### set_style('kdb086', 'earthquakes.csv', 'new drawing info') #####"
-
-        print "***** get_style('kdb086', 'earthquakes.csv') *****"
-        get_style('kdb086', 'earthquakes.csv')
-        print "##### get_style('kdb086', 'earthquakes.csv') #####"
-
-        print "***** list_data('kdb086') *****"
-        list_data("kdb086")
-        print "##### list_data('kdb086') #####"
+##    def test_style_data(self):
+##
+##        print "***** list_data('imaps') *****"
+##        list_data("imaps")
+##        print "##### list_data('imaps') #####"
+##
+##        print "***** get_style('imaps', 'earthquakes!^ last_month.csv') *****"
+##        get_style('imaps', 'earthquakes!^ last_month.csv')
+##        print "##### get_style('imaps', 'earthquakes!^ last_month.csv') #####"
+##
+##        print "***** set_style('imaps', 'earthquakes!^ last_month.csv', 'new drawing info') *****"
+##        set_style('imaps', 'earthquakes!^ last_month.csv', 'new drawing info')
+##        print "##### set_style('imaps', 'earthquakes!^ last_month.csv', 'new drawing info') #####"
 
     def test_share_data(self):
 
@@ -2100,99 +1671,13 @@ class TestDataLibrarian(unittest.TestCase):
         list_shared_data("zhr101")
         print "##### list_shared_data('zhr101') #####"
 
-        print "***** share_data('kdb086', 'earthquakes.csv', 'zhr101') *****"
-        share_data('kdb086', 'earthquakes.csv', 'zhr101')
-        print "##### share_data('kdb086', 'earthquakes.csv', 'zhr101') #####"
+        print "***** share_data('imaps', 'earthquakes!^ last_month.csv', 'zhr101') *****"
+        share_data('imaps', 'earthquakes!^ last_month.csv', 'zhr101')
+        print "##### share_data('imaps', 'earthquakes!^ last_month.csv', 'zhr101') #####"
 
-        print "***** share_data('kdb086', 'APC_Equipment.zip', 'zhr101') *****"
-        share_data('kdb086', 'APC_Equipment.zip', 'zhr101')
-        print "##### share_data('kdb086', 'APC_Equipment.zip', 'zhr101') #####"
-
-        print "***** share_data('kdb086', 'APC_Equipment.zip', 'wqx202') *****"
-        share_data('kdb086', 'APC_Equipment.zip', 'wqx202')
-        print "##### share_data('kdb086', 'APC_Equipment.zip', 'wqx202') #####"
-
-        print "***** list_shared_users('kdb086', 'earthquakes.csv') *****"
-        list_shared_users('kdb086', 'earthquakes.csv')
-        print "##### list_shared_users('kdb086', 'earthquakes.csv') #####"
-
-        print "***** list_shared_data('zhr101') *****"
-        list_shared_data("zhr101")
-        print "##### list_shared_data('zhr101') #####"
-
-        print "***** list_shared_users('kdb086', 'APC_Equipment.zip') *****"
-        list_shared_users('kdb086', 'APC_Equipment.zip')
-        print "##### list_shared_users('kdb086', 'APC_Equipment.zip') #####"
-
-        print "***** revoke_share('kdb086', 'earthquakes.csv', 'zhr101') *****"
-        revoke_share('kdb086', 'earthquakes.csv', 'zhr101')
-        print "##### revoke_share('kdb086', 'earthquakes.csv', 'zhr101') #####"
-
-        print "***** list_shared_data('zhr101') *****"
-        list_shared_data("zhr101")
-        print "##### list_shared_data('zhr101') #####"
-
-        print "***** revoke_all_shares('kdb086', 'APC_Equipment.zip') *****"
-        revoke_all_shares('kdb086', 'APC_Equipment.zip')
-        print "##### revoke_all_shares('kdb086', 'APC_Equipment.zip') #####"
-
-        print "***** list_shared_data('wqx202') *****"
-        list_shared_data("wqx202")
-        print "##### list_shared_data('wqx202') #####"
-
-    def test_get_data_csv(self):
-
-        print "***** get_data('imaps', 'APC_Offices_SingleAddress_address.csv') *****"
-        get_data("imaps", "APC_Offices_SingleAddress_address.csv")
-        print "##### get_data('imaps', 'APC_Offices_SingleAddress_address.csv') #####"
-
-        print "***** get_data('imaps', 'APC_Offices_SingleAddress_NAD83.csv') *****"
-        get_data("imaps", "APC_Offices_SingleAddress_NAD83.csv")
-        print "##### get_data('imaps', 'APC_Offices_SingleAddress_NAD83.csv') #####"
-
-        print "***** get_data('imaps', 'APC_Offices_SingleAddress_NAD27.csv') *****"
-        get_data("imaps", "APC_Offices_SingleAddress_NAD27.csv")
-        print "##### get_data('imaps', 'APC_Offices_SingleAddress_NAD27.csv') #####"
-
-        print "***** get_data('imaps', 'APC_Offices_SingleAddress_noDatum.csv') *****"
-        get_data("imaps", "APC_Offices_SingleAddress_noDatum.csv")
-        print "##### get_data('imaps', 'APC_Offices_SingleAddress_noDatum.csv') #####"
-
-        print "***** get_data('imaps', 'APC_Offices_SingleAddress_WGS84.csv') *****"
-        get_data("imaps", "APC_Offices_SingleAddress_WGS84.csv")
-        print "##### get_data('imaps', 'APC_Offices_SingleAddress_WGS84.csv') #####"
-
-        print "***** get_data('imaps', 'APC_Offices_SplitAddress_address.csv') *****"
-        get_data("imaps", "APC_Offices_SplitAddress_address.csv")
-        print "##### get_data('imaps', 'APC_Offices_SplitAddress_address.csv') #####"
-
-        print "***** get_data('imaps', 'APC_Offices_SplitAddress_NAD83.csv') *****"
-        get_data("imaps", "APC_Offices_SplitAddress_NAD83.csv")
-        print "##### get_data('imaps', 'APC_Offices_SplitAddress_NAD83.csv') #####"
-
-        print "***** get_data('imaps', 'APC_Offices_SplitAddress_NAD27.csv') *****"
-        get_data("imaps", "APC_Offices_SplitAddress_NAD27.csv")
-        print "##### get_data('imaps', 'APC_Offices_SplitAddress_NAD27.csv') #####"
-
-        print "***** get_data('imaps', 'APC_Offices_SplitAddress_noDatum.csv') *****"
-        get_data("imaps", "APC_Offices_SplitAddress_noDatum.csv")
-        print "##### get_data('imaps', 'APC_Offices_SplitAddress_noDatum.csv') #####"
-
-        print "***** get_data('imaps', 'APC_Offices_SplitAddress_WGS84.csv') *****"
-        get_data("imaps", "APC_Offices_SplitAddress_WGS84.csv")
-        print "##### get_data('imaps', 'APC_Offices_SplitAddress_WGS84.csv') #####"
-
-    def test_bad_data(self):
-        
-        # zip contains extra files and has space in names
-        print "***** get_data('imaps', 'Silvertip 76-9 Unit F 1H Flowline-CL-PERM-TWS.zip') *****"
-        get_data("imaps", "Silvertip 76-9 Unit F 1H Flowline-CL-PERM-TWS.zip")
-        print "##### get_data('imaps', 'Silvertip 76-9 Unit F 1H Flowline-CL-PERM-TWS.zip') #####"
-
-        # CSV has space and leading numeric letters in name
-        print "***** get_data('imaps', '558 SSX GWA V2 five.csv') *****"
-        get_data("imaps", "558 SSX GWA V2 five.csv")
-        print "##### get_data('imaps', '558 SSX GWA V2 five.csv') #####"
+        print "***** share_data('imaps', 'Public_School_Locations.zip', 'zhr101') *****"
+        share_data('imaps', 'Public_School_Locations.zip', 'zhr101')
+        print "##### share_data('imaps', 'Public_School_Locations.zip', 'zhr101') #####"
 
 
 if __name__ == "__main__":
