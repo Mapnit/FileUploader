@@ -57,10 +57,9 @@ app_log.addHandler(log_handler)
 # global config variable
 config = {}
 
-
 # load env variables in the config file
 def _init_app(config_file):
-    logging.debug("init config file: %s" % config_file)
+    app_log.debug("init config file: %s" % config_file)
     xml_file = None
     try:
         xml_file = Et.parse(config_file)
@@ -119,29 +118,29 @@ def _parse_address(address_fields, data_columns):
     if "address" in address_fields.keys():
         address = data_columns[address_fields["address"]["index"]]
         addr_part_array.append(str(address))
-    # logging.debug("address = " + str(address))
+    # app_log.debug("address = " + str(address))
     # city field
     if "city" in address_fields.keys():
         city = data_columns[address_fields["city"]["index"]]
         addr_part_array.append(str(city))
-    # logging.debug("city = " + str(city))
+    # app_log.debug("city = " + str(city))
     # state field
     if "state" in address_fields.keys():
         state = data_columns[address_fields["state"]["index"]]
         addr_part_array.append(str(state))
-    # logging.debug("state = " + str(state))
+    # app_log.debug("state = " + str(state))
     # zip field
     if "zipcode" in address_fields.keys():
         zipcode = data_columns[address_fields["zipcode"]["index"]]
         addr_part_array.append(str(zipcode))
-    # logging.debug("zipcode = " + str(zipcode))
+    # app_log.debug("zipcode = " + str(zipcode))
     # country field
     if "country" in address_fields.keys():
         country = data_columns[address_fields["country"]["index"]]
         addr_part_array.append(str(country))
-    # logging.debug("country = " + str(country))
+    # app_log.debug("country = " + str(country))
 
-    logging.debug("address line: " + ",".join(addr_part_array))
+    app_log.debug("address line: " + ",".join(addr_part_array))
     return ",".join(addr_part_array)
 
 
@@ -162,11 +161,11 @@ def _geocoder_by_bing(address_line):
             # take the first one
             coords = result["resourceSets"][0]["resources"][0]["point"]["coordinates"]
             # gc_result["resourceSets"][0]["resources"][0]["geocodePoints"][0]["coordinates"]
-            logging.debug("%s match on the given address [%s]" % (match_code, address_line))
+            app_log.debug("%s match on the given address [%s]" % (match_code, address_line))
         else:
-            logging.error("no coordinates matching the given address [%s]" % address_line)
+            app_log.error("no coordinates matching the given address [%s]" % address_line)
     else:
-        logging.error("Bing fails to return the geocoding result {status code: %i]" % req.status_code)
+        app_log.error("Bing fails to return the geocoding result {status code: %i]" % req.status_code)
 
     return coords
 
@@ -189,7 +188,7 @@ def _list_shared_users_mssql(username, filename, data_filter=None):
         count = 0
         print '['
         try:
-            logging.debug("list all shared users on [%s] [%s]" % (username, filename))
+            app_log.debug("list all shared users on [%s] [%s]" % (username, filename))
             db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             row_cur.execute(config['shared_user_list'], {'owner': username, 'src_file_path': filename})
@@ -203,7 +202,7 @@ def _list_shared_users_mssql(username, filename, data_filter=None):
                       % (shared_user, shared_date)
                 count += 1
         except mssql.DatabaseError as e:
-            logging.error('error in list_shared_users: ' + str(e))
+            app_log.error('error in list_shared_users: ' + str(e))
             return None
         finally:
             print ']'
@@ -214,7 +213,7 @@ def _list_shared_users_mssql(username, filename, data_filter=None):
                 db_conn.close()
 
     except Exception as e:
-        logging.error('error in list_shared_users: ' + str(e))
+        app_log.error('error in list_shared_users: ' + str(e))
         return None
 
 
@@ -243,7 +242,7 @@ def _list_shared_data_mssql(username, data_filter=None):
         count = 0
         print '['
         try:
-            logging.debug("list all data files shared to " + username)
+            app_log.debug("list all data files shared to " + username)
             db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             row_cur.execute(config['shared_data_list'], {'shared_user': username})
@@ -268,7 +267,7 @@ def _list_shared_data_mssql(username, data_filter=None):
                          upload_status, total_row_count, cached_row_count, drawing_info, shared_date)
                 count += 1
         except mssql.DatabaseError as e:
-            logging.error('error in list_shared_data: ' + str(e))
+            app_log.error('error in list_shared_data: ' + str(e))
             return None
         finally:
             print ']'
@@ -279,7 +278,7 @@ def _list_shared_data_mssql(username, data_filter=None):
                 db_conn.close()
 
     except Exception as e:
-        logging.error('error in list_shared_data: ' + str(e))
+        app_log.error('error in list_shared_data: ' + str(e))
         return None
 
 
@@ -315,11 +314,11 @@ def _share_data_mssql(username, filename, shared_user):
                                                       'shared_user': shared_user,
                                                       'shared_date': datetime.datetime.now()})
             db_conn.commit()
-            logging.info("share [%s] [%s] with [%s] "
+            app_log.info("share [%s] [%s] with [%s] "
                          % (username, filename, shared_user))
             return True
         except mssql.DatabaseError as e:
-            logging.error('error in share_data: ' + str(e))
+            app_log.error('error in share_data: ' + str(e))
             return False
         finally:
             if row_cur is not None:
@@ -328,7 +327,7 @@ def _share_data_mssql(username, filename, shared_user):
                 db_conn.close()
 
     except Exception as e:
-        logging.error('error in share_data: ' + str(e))
+        app_log.error('error in share_data: ' + str(e))
         return False
 
 
@@ -360,11 +359,11 @@ def _revoke_share_mssql(username, filename, shared_user):
                                                       'src_file_path': filename,
                                                       'shared_user': shared_user})
             db_conn.commit()
-            logging.info("remove share of [%s] [%s] from [%s] "
+            app_log.info("remove share of [%s] [%s] from [%s] "
                          % (username, filename, shared_user))
             return True
         except mssql.DatabaseError as e:
-            logging.error('error in revoke_share: ' + str(e))
+            app_log.error('error in revoke_share: ' + str(e))
             return False
         finally:
             if row_cur is not None:
@@ -373,7 +372,7 @@ def _revoke_share_mssql(username, filename, shared_user):
                 db_conn.close()
 
     except Exception as e:
-        logging.error('error in revoke_share: ' + str(e))
+        app_log.error('error in revoke_share: ' + str(e))
         return False
 
 
@@ -405,11 +404,11 @@ def _revoke_all_shares_mssql(username, filename):
             row_cur.execute(config['shared_delete_all'], {'owner': username,
                                                           'src_file_path': filename})
             db_conn.commit()
-            logging.info("remove share of [%s] [%s] from all users "
+            app_log.info("remove share of [%s] [%s] from all users "
                          % (username, filename))
             return True
         except mssql.DatabaseError as e:
-            logging.error('error in revoke_all_shares: ' + str(e))
+            app_log.error('error in revoke_all_shares: ' + str(e))
             return False
         finally:
             if row_cur is not None:
@@ -418,7 +417,7 @@ def _revoke_all_shares_mssql(username, filename):
                 db_conn.close()
 
     except Exception as e:
-        logging.error('error in revoke_all_shares: ' + str(e))
+        app_log.error('error in revoke_all_shares: ' + str(e))
         return False
 
 
@@ -463,7 +462,7 @@ def _register_cache_mssql(username, filename, cache_file_path, data_name, status
                                                     'last_modified': src_modified_time,
                                                     'last_uploaded': datetime.datetime.now()})
             db_conn.commit()
-            logging.info("register cache of [%s] [%s]: [%s]" % (username, filename, cache_file_path))
+            app_log.info("register cache of [%s] [%s]: [%s]" % (username, filename, cache_file_path))
             return True
         except mssql.MssqlDriverException as e:
             print("A MSSQLDriverException has been caught." + str(e))
@@ -474,10 +473,10 @@ def _register_cache_mssql(username, filename, cache_file_path, data_name, status
             print('State = ',e.state)
             print('Message = ',e.message)
         except mssql.DatabaseError as e:
-            logging.error('error in register_cache: ' + str(e))
+            app_log.error('error in register_cache: ' + str(e))
             return False
         except Exception as e:
-            logging.error('error in register_cache: ' + str(e))
+            app_log.error('error in register_cache: ' + str(e))
             return False
         finally:
             if row_cur is not None:
@@ -486,7 +485,7 @@ def _register_cache_mssql(username, filename, cache_file_path, data_name, status
                 db_conn.close()
 
     except Exception as e:
-        logging.error('error in register_cache: ' + str(e))
+        app_log.error('error in register_cache: ' + str(e))
         return False
 
 
@@ -525,10 +524,10 @@ def _get_status_mssql(username, filename):
             if row is not None:
                 return row[0]
             else:
-                logging.info("no such entry [%s] [%s]" % (username, filename))
+                app_log.info("no such entry [%s] [%s]" % (username, filename))
                 return None
         except mssql.DatabaseError as e:
-            logging.error('error in get_status: ' + str(e))
+            app_log.error('error in get_status: ' + str(e))
             return None
         finally:
             row = None
@@ -538,7 +537,7 @@ def _get_status_mssql(username, filename):
                 db_conn.close()
 
     except Exception as e:
-        logging.error('error in get_status: ' + str(e))
+        app_log.error('error in get_status: ' + str(e))
         return None
 
 
@@ -572,7 +571,7 @@ def _get_cache_mssql(username, filename):
         row_cur = None
         row = None
         try:
-            logging.debug("check the cache registry: " + config['db_server'])
+            app_log.debug("check the cache registry: " + config['db_server'])
             db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             row_cur.execute(config['data_touch'], {'owner': username, 'src_file_path': filename,
@@ -586,22 +585,22 @@ def _get_cache_mssql(username, filename):
                 cache_file_paths_string = str(row[1])
                 if last_modified_date is not None and cache_file_paths_string is not None:
                     time_delta = src_modified_time - last_modified_date
-                    logging.debug("the cache expires by %f" % time_delta.total_seconds())
+                    app_log.debug("the cache expires by %f" % time_delta.total_seconds())
                     if abs(time_delta.total_seconds()) < 1:
                         cache_file_paths = cache_file_paths_string.split(FILE_PATH_SEP)
                         cache_exists = True
                         for file_path in cache_file_paths:
                             cache_exists = cache_exists and os.path.exists(file_path)
                             if not cache_exists:
-                                logging.debug("the cache file not found at " + file_path)
+                                app_log.debug("the cache file not found at " + file_path)
                                 break
                         if cache_exists:
-                            logging.info("valid cache of [%s] [%s]: [%s]"
+                            app_log.info("valid cache of [%s] [%s]: [%s]"
                                          % (username, filename, cache_file_paths_string))
                             return cache_file_paths_string
             return None
         except mssql.DatabaseError as e:
-            logging.error('error in get_cache: ' + str(e))
+            app_log.error('error in get_cache: ' + str(e))
             return None
         finally:
             row = None
@@ -611,7 +610,7 @@ def _get_cache_mssql(username, filename):
                 db_conn.close()
 
     except Exception as e:
-        logging.error('error in get_cache: ' + str(e))
+        app_log.error('error in get_cache: ' + str(e))
         return None
 
 
@@ -630,7 +629,7 @@ def _archive_data_file(username, filename):
     src_file_path = os.path.join(user_folder, filename)
 
     if not os.path.exists(src_file_path):
-        logging.error('no such data file [%s]' % filename)
+        app_log.error('no such data file [%s]' % filename)
         return None
 
     else:
@@ -668,7 +667,7 @@ def _archive_data_mssql(username, filename, archive_file_path, retain_style=Fals
             db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             if archive_file_path is None:
-                logging.info("delete the orphan registry (source file is missing)")
+                app_log.info("delete the orphan registry (source file is missing)")
             else:
                 # move the registry to the archived table
                 row_cur.execute(config['data_archive'], {'owner': username,
@@ -683,11 +682,11 @@ def _archive_data_mssql(username, filename, archive_file_path, retain_style=Fals
                 row_cur.execute(config['style_delete'], {'owner': username,
                                                          'src_file_path': filename})
             db_conn.commit()
-            logging.info("archived [%s] [%s] into [%s] (style %s deleted)"
+            app_log.info("archived [%s] [%s] into [%s] (style %s deleted)"
                          % (username, filename, archive_file_path, ("not" if retain_style is True else "is")))
             return True
         except mssql.DatabaseError as e:
-            logging.error('error in archive_data: ' + str(e))
+            app_log.error('error in archive_data: ' + str(e))
             return False
         finally:
             if row_cur is not None:
@@ -696,7 +695,7 @@ def _archive_data_mssql(username, filename, archive_file_path, retain_style=Fals
                 db_conn.close()
 
     except Exception as e:
-        logging.error('error in archive_data: ' + str(e))
+        app_log.error('error in archive_data: ' + str(e))
         return False
 
 
@@ -730,10 +729,10 @@ def _rename_data_mssql(username, filename, new_data_name):
                                                     'src_file_path': filename,
                                                     'data_name': new_data_name})
             db_conn.commit()
-            logging.info("rename [%s] [%s] to [%s]" % (username, filename, new_data_name))
+            app_log.info("rename [%s] [%s] to [%s]" % (username, filename, new_data_name))
             return True
         except mssql.DatabaseError as e:
-            logging.error('error in rename_data: ' + str(e))
+            app_log.error('error in rename_data: ' + str(e))
             return False
         finally:
             if row_cur is not None:
@@ -742,7 +741,7 @@ def _rename_data_mssql(username, filename, new_data_name):
                 db_conn.close()
 
     except Exception as e:
-        logging.error('error in rename_data: ' + str(e))
+        app_log.error('error in rename_data: ' + str(e))
         return False
 
 
@@ -781,10 +780,10 @@ def _get_style_mssql(username, filename):
             row = row_cur.fetchone()  # user_name and file_name are made up as Primary key
             if row is not None:
                 drawing_info = row[0]
-            logging.info("get the style of [%s] [%s]: [%s]" % (username, filename, drawing_info))
+            app_log.info("get the style of [%s] [%s]: [%s]" % (username, filename, drawing_info))
             return drawing_info
         except mssql.DatabaseError as e:
-            logging.error('error in get_style: ' + str(e))
+            app_log.error('error in get_style: ' + str(e))
             return drawing_info
         finally:
             row = None
@@ -794,7 +793,7 @@ def _get_style_mssql(username, filename):
                 db_conn.close()
 
     except Exception as e:
-        logging.error('error in get_style: ' + str(e))
+        app_log.error('error in get_style: ' + str(e))
         return False
 
 
@@ -839,10 +838,10 @@ def _set_style_mssql(username, filename, drawing_info):
             # commit changes
             db_conn.commit()
 
-            logging.info("set the style of [%s] [%s]: [%s]" % (username, filename, drawing_info))
+            app_log.info("set the style of [%s] [%s]: [%s]" % (username, filename, drawing_info))
             return True
         except mssql.DatabaseError as e:
-            logging.error('error in set_style: ' + str(e))
+            app_log.error('error in set_style: ' + str(e))
             return False
         finally:
             row = None
@@ -852,7 +851,7 @@ def _set_style_mssql(username, filename, drawing_info):
                 db_conn.close()
 
     except Exception as e:
-        logging.error('error in set_style: ' + str(e))
+        app_log.error('error in set_style: ' + str(e))
         return False
 
 
@@ -902,7 +901,7 @@ def _write_features_json(datapath, json_file_path):
     from arcpy import env
 
     env.overwriteOutput = True
-    logging.info("output features to json [%s]" % json_file_path)
+    app_log.info("output features to json [%s]" % json_file_path)
     arcpy.FeaturesToJSON_conversion(datapath, json_file_path)  # , "FORMATTED"
 
 #
@@ -914,7 +913,7 @@ def _output_feature_json(json_file_paths, output_name=None):
     for file_path in json_file_paths:
         if count > 0:
             print ","
-        logging.info("serve json from the cache file [%s]" % file_path)
+        app_log.info("serve json from the cache file [%s]" % file_path)
         with open(file_path, "r") as json_file:
             for txtline in json_file:
                 print txtline
@@ -932,7 +931,7 @@ def _convert_to_featurecoll(stg_json_paths, carto_styles_array, data_despt_array
     # convert each file
     import json
     for file_path in stg_json_paths:
-        logging.info("load json from the cache file [%s]" % file_path)
+        app_log.info("load json from the cache file [%s]" % file_path)
         # compose the featurecoll object
         with open(file_path, "r") as json_file:
             stagedData = json.load(json_file)
@@ -987,7 +986,7 @@ def _filter_data_by_count(file_path, oid_column, stg_workspace, extra_name=""):
     filtered_layer_name = "%s_%s_filtered_layer" % (fname, extra_name)
     # filtered_file_path = os.path.join(stg_workspace, "%s_%s_filtered%s" % (fname, extra_name, fext))
 
-    logging.info("calculate the feature count")
+    app_log.info("calculate the feature count")
     arcpy.Statistics_analysis(file_path, stats_table, stats_fields)
 
     max_count = int(config["max_num_of_rows"])
@@ -1001,14 +1000,14 @@ def _filter_data_by_count(file_path, oid_column, stg_workspace, extra_name=""):
             break
 
     if cnt_oid > max_count:
-        logging.info("limit the number of features (%i) to %i" % (cnt_oid, max_count))
+        app_log.info("limit the number of features (%i) to %i" % (cnt_oid, max_count))
         where_clause = "%s < %i" % (oid_column, min_oid + max_count)
         arcpy.MakeFeatureLayer_management(file_path, filtered_layer_name, where_clause)
         # arcpy.CopyFeatures_management(filtered_layer_name, filtered_file_path)
         # return filtered_file_path
         return filtered_layer_name, cnt_oid, max_count
     else:
-        logging.info("no limit since the number of features (%i) is less than %i" % (cnt_oid, max_count))
+        app_log.info("no limit since the number of features (%i) is less than %i" % (cnt_oid, max_count))
         return file_path, cnt_oid, cnt_oid
 
 #
@@ -1069,7 +1068,7 @@ def _prepare_data(username, filename):
 
     if fext == ".zip":  # zipped shapefile
         # unzip the zip file
-        logging.info("unzip file [%s] to [%s]" % (src_file_path, stg_folder))
+        app_log.info("unzip file [%s] to [%s]" % (src_file_path, stg_folder))
         import zipfile
         with zipfile.ZipFile(src_file_path, "r") as zipShpFile:
             zipShpFile.extractall(stg_folder)
@@ -1083,13 +1082,13 @@ def _prepare_data(username, filename):
                     break
 
         if shp_filename is None:
-            logging.error("no shape file found in [%s]" % src_file_path)
+            app_log.error("no shape file found in [%s]" % src_file_path)
         else:
             unzip_base, unzip_ext = os.path.splitext(shp_filename)
             unzip_dir = os.path.dirname(unzip_base)
             unzip_base = os.path.basename(unzip_base)
             stg_data_path = os.path.join(os.path.join(stg_folder, unzip_dir), unzip_base + ".shp")
-            logging.info("unzipped shape file [%s]" % stg_data_path)
+            app_log.info("unzipped shape file [%s]" % stg_data_path)
 
         data_despt = arcpy.Describe(stg_data_path)
         data_despt_array.append(data_despt)
@@ -1118,11 +1117,11 @@ def _prepare_data(username, filename):
 
     elif fext == ".gpx":  # gpx
         if not arcpy.Exists(stg_fgdb_path):
-            logging.info("create fgdb [%s] under [%s]" % (stg_fgdb_name, stg_folder))
+            app_log.info("create fgdb [%s] under [%s]" % (stg_fgdb_name, stg_folder))
             arcpy.CreateFileGDB_management(stg_folder, stg_fgdb_name)
 
         # convert to feature class
-        logging.info("convert gpx [%s] to staging fgdb in [%s]" % (src_file_path, stg_fgdb_path))
+        app_log.info("convert gpx [%s] to staging fgdb in [%s]" % (src_file_path, stg_fgdb_path))
         stg_data_path = os.path.join(stg_fgdb_path, fname_norm)
         arcpy.GPXtoFeatures_conversion(src_file_path, stg_data_path)
 
@@ -1165,21 +1164,21 @@ def _prepare_data(username, filename):
                 src_datum = data_fields[csv_qualifiers["datum"]["index"]]
                 src_datum = src_datum.upper()
                 if src_datum in COORDSYS_LIST.keys():
-                    logging.info("found datum [%s] in csv [%s]" % (src_datum, src_file_path))
+                    app_log.info("found datum [%s] in csv [%s]" % (src_datum, src_file_path))
                     src_spatial_ref = arcpy.SpatialReference(COORDSYS_LIST[src_datum])
             else:
-                logging.info("found no datum (and assumed WGS84) in csv [%s]" % src_file_path)
+                app_log.info("found no datum (and assumed WGS84) in csv [%s]" % src_file_path)
 
         # check the addr/loc columns
         if "latitude" not in csv_qualifiers.keys() or "longitude" not in csv_qualifiers.keys():
-            logging.info("found no latitude or longitude column in csv [%s]" % src_file_path)
+            app_log.info("found no latitude or longitude column in csv [%s]" % src_file_path)
             if not ("address" in csv_qualifiers.keys() or "zipcode" in csv_qualifiers.keys()):
-                logging.error("found no address or zipcode column in csv [%s]" % src_file_path)
+                app_log.error("found no address or zipcode column in csv [%s]" % src_file_path)
                 # error out because no data can be spatialized
                 raise Exception('no column can be transformed to a spatial shape')
             else:
                 # geocode each row
-                logging.info("geocode address in csv [%s]" % src_file_path)
+                app_log.info("geocode address in csv [%s]" % src_file_path)
                 csv_filepath_gc = os.path.join(stg_folder, fname + ".csv")
                 with open(csv_filepath_gc, "wb") as csvfw:
                     csv_writer = csv.writer(csvfw)
@@ -1205,11 +1204,11 @@ def _prepare_data(username, filename):
 
         # make file-gdb as a staging db
         if not arcpy.Exists(stg_fgdb_path):
-            logging.info("create fgdb [%s] under [%s]" % (stg_fgdb_name, stg_folder))
+            app_log.info("create fgdb [%s] under [%s]" % (stg_fgdb_name, stg_folder))
             arcpy.CreateFileGDB_management(stg_folder, stg_fgdb_name)
 
         # convert to feature class
-        logging.info("convert csv [%s] to staging fgdb in [%s]" % (src_file_path, stg_fgdb_path))
+        app_log.info("convert csv [%s] to staging fgdb in [%s]" % (src_file_path, stg_fgdb_path))
         csv_layer_name = fname_norm + "_csv_layer"
         if src_spatial_ref is None:
             src_spatial_ref = output_spatial_ref
@@ -1233,7 +1232,7 @@ def _prepare_data(username, filename):
         # transform or project to the output spatial ref if necessary
         if data_despt.spatialReference.factoryCode == COORDSYS_LIST["NAD27"]:
             # NAD27 -> NAD83
-            logging.info("project from NAD27 to NAD83 on csv [%s]" % stg_data_path)
+            app_log.info("project from NAD27 to NAD83 on csv [%s]" % stg_data_path)
             output_spatial_ref = arcpy.SpatialReference(COORDSYS_LIST["NAD83"])
             stg_prep_file_path = stg_data_path + "_prep2"
             arcpy.Project_management(stg_data_path, stg_prep_file_path, output_spatial_ref,
@@ -1243,7 +1242,7 @@ def _prepare_data(username, filename):
 
         if data_despt.spatialReference.factoryCode == COORDSYS_LIST["NAD83"]:
             # NAD83 -> WGS84
-            logging.info("project from NAD83 to WGS84 on csv [%s]" % stg_data_path)
+            app_log.info("project from NAD83 to WGS84 on csv [%s]" % stg_data_path)
             output_spatial_ref = arcpy.SpatialReference(COORDSYS_LIST["WGS84"])
             stg_prep_file_path = stg_data_path + "_prep1"
             arcpy.Project_management(stg_data_path, stg_prep_file_path, output_spatial_ref,
@@ -1263,7 +1262,7 @@ def _prepare_data(username, filename):
 
     elif fext in [".kmz", ".kml"]:  # kml/kmz
         # convert to feature class
-        logging.info("convert kml/kmz [%s] to staging fgdb in [%s]" % (src_file_path, stg_folder))
+        app_log.info("convert kml/kmz [%s] to staging fgdb in [%s]" % (src_file_path, stg_folder))
         arcpy.KMLToLayer_conversion(src_file_path, stg_folder, fname_norm)
 
         # traverse the datasets
@@ -1309,7 +1308,7 @@ def _prepare_data(username, filename):
         # arcpy.Delete_management(stg_fgdb_path)
 
     else:
-        logging.error("unsupported file type: %s" % fext)
+        app_log.error("unsupported file type: %s" % fext)
 
     if carto_styles_string is None:
         carto_styles_string = "[" + ",".join(carto_styles_array) + "]"
@@ -1332,12 +1331,12 @@ def get_data(username, filename):
 
     cache_json_path_string = _get_cache(username, filename)
     if cache_json_path_string is not None:
-        logging.info("use cached data: [%s]" % cache_json_path_string)
+        app_log.info("use cached data: [%s]" % cache_json_path_string)
     else:
         # merely create a registry entry
         _register_cache(username, filename, "", fname, "PROCESSING")
         # prepare data
-        logging.debug("prepare data into json")
+        app_log.debug("prepare data into json")
         cache_json_path_string, carto_json_string, total_row_count, cached_row_count = _prepare_data(username, filename)
         # register the data with the cache and status info
         if cache_json_path_string is not None:
@@ -1348,7 +1347,7 @@ def get_data(username, filename):
 
     # output feature as json
     if cache_json_path_string is not None:
-        logging.debug("send out data")
+        app_log.debug("send out data")
         cache_json_paths = cache_json_path_string.split(FILE_PATH_SEP)
         _output_feature_json(cache_json_paths)
 
@@ -1359,7 +1358,7 @@ def get_data(username, filename):
 #
 def _list_files(username, data_filter=None):
     list_folder = os.path.join(config['store'], username)
-    logging.debug('user folder: ' + list_folder)
+    app_log.debug('user folder: ' + list_folder)
 
     try:
         count = 0
@@ -1368,7 +1367,7 @@ def _list_files(username, data_filter=None):
             fp_full = os.path.join(list_folder, fn)
             fn_base, fn_ext = os.path.splitext(fn)
             if fn_ext.lower() in FILE_TYPES and os.path.isfile(fp_full):
-                logging.debug("user file: " + fp_full)
+                app_log.debug("user file: " + fp_full)
                 modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(fp_full))
                 file_size = os.path.getsize(fp_full)
                 if count > 0:
@@ -1378,7 +1377,7 @@ def _list_files(username, data_filter=None):
                 count += 1
     except os.error, err:
         print '{"error": "failed to list data files", "scope":"env"}'
-        logging.error('error in list_data: ' + str(err))
+        app_log.error('error in list_data: ' + str(err))
     finally:
         print ']'
 
@@ -1401,7 +1400,7 @@ def _list_data_mssql(username, data_filter=None):
         count = 0
         print '['
         try:
-            logging.debug("list all data files owned by " + username)
+            app_log.debug("list all data files owned by " + username)
             db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             row_cur.execute(config['data_list'], {'owner': username})
@@ -1423,10 +1422,10 @@ def _list_data_mssql(username, data_filter=None):
                          upload_status, total_row_count, cached_row_count, drawing_info)
                 count += 1
         except mssql.DatabaseError as e:
-            logging.error('error in list_data: ' + str(e))
+            app_log.error('error in list_data: ' + str(e))
             return None
         except Exception as e:
-            logging.error('error in list_data: ' + str(e))
+            app_log.error('error in list_data: ' + str(e))
             return None
         finally:
             print ']'
@@ -1437,7 +1436,7 @@ def _list_data_mssql(username, data_filter=None):
                 db_conn.close()
 
     except Exception as e:
-        logging.error('error in list_data: ' + str(e))
+        app_log.error('error in list_data: ' + str(e))
         return None
 
 
@@ -1465,25 +1464,25 @@ def response():
     elif 'action' not in arguments.keys():
         print '{"error": "unknown action", "scope":"request"}'
     else:
-        logging.info("request parameters: ")
+        app_log.info("request parameters: ")
         for i in arguments.keys():
-            logging.debug(" - " + str(i) + ": " + str(arguments[i].value))
+            app_log.debug(" - " + str(i) + ": " + str(arguments[i].value))
 
         username = str(arguments['username'].value).lower()
-        # logging.info(" - username: " + username)
+        # app_log.info(" - username: " + username)
         action = str(arguments['action'].value).lower()
-        # logging.info(" - action: " + action)
+        # app_log.info(" - action: " + action)
         filters = None
         if 'filters' in arguments.keys() and arguments['filters'].value is not None:
             filters = str(arguments['filters'])
-        logging.info(" - filters: " + str(filters))
+        app_log.info(" - filters: " + str(filters))
 
         if action == 'list':
-            logging.info("execute: list files satisfying filters [%s] " % str(filters))
+            app_log.info("execute: list files satisfying filters [%s] " % str(filters))
             list_data(username, filters)
 
         elif action == 'list_files':
-            logging.info("execute: list files satisfying filters [%s] " % str(filters))
+            app_log.info("execute: list files satisfying filters [%s] " % str(filters))
             _list_files(username, filters)
 
         elif action == 'data':
@@ -1534,7 +1533,7 @@ def response():
                 print '{"status": "success", "scope":"response", "filename":"%s"}' % filename
 
         elif action == 'list_shared_data':
-            logging.info("execute: list all shared files satisfying filters [%s] " % str(filters))
+            app_log.info("execute: list all shared files satisfying filters [%s] " % str(filters))
             list_shared_data(username, filters)
 
         elif action == 'list_shared_users':
@@ -1576,7 +1575,7 @@ def response():
         else:
             print '{"error": "unknown action", "scope":"request"}'
 
-    logging.info("response completed")
+    app_log.info("response completed")
     return
 
 
