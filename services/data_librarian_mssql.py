@@ -37,9 +37,22 @@ TRANSFORMATION_LIST = {"NAD27_to_NAD83": "NAD_1927_To_NAD_1983_NADCON",
 
 BING_GC_URL = "http://dev.virtualearth.net/REST/v1/Locations?key={BING_MAP_KEY}&q={ADDRESS}"
 
-logging.basicConfig(filename=os.path.join(os.path.join(DEPLOY_ROOT, "logs"), "data_librarian.log"),
-                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                    level=logging.DEBUG)
+# config the logging
+##logging.basicConfig(filename=os.path.join(os.path.join(DEPLOY_ROOT, "logs"), "data_librarian.log"),
+##                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+##                    level=logging.DEBUG)
+from logging.handlers import RotatingFileHandler
+
+log_formatter = logging.Formatter('%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s')
+log_handler = RotatingFileHandler(os.path.join(os.path.join(DEPLOY_ROOT, "logs"), "data_librarian.log"),
+                                mode='a', maxBytes=5*1024*1024,
+                                backupCount=2, encoding=None, delay=0)
+log_handler.setFormatter(log_formatter)
+log_handler.setLevel(logging.DEBUG)
+
+app_log = logging.getLogger('root')
+app_log.setLevel(logging.INFO)
+app_log.addHandler(log_handler)
 
 # global config variable
 config = {}
