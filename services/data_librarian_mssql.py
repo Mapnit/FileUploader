@@ -911,43 +911,45 @@ def _output_feature_json(json_file_paths, output_name=None):
 #
 # TODO: support the featurecollection format
 #
-def _convert_to_featurecoll(stg_json_paths, carto_styles_array, data_despt, data_name, cache_json_path):
+def _convert_to_featurecoll(stg_json_paths, carto_styles_array, data_despt_array, data_name, cache_json_path):
     count = 0
     # featureCollection
     featureColl = {"showLegend": "true", "layers": []}
     # convert each file
     import json
-    for file_path in json_file_paths:
+    for file_path in stg_json_paths:
         logging.info("load json from the cache file [%s]" % file_path)
+        # compose the featurecoll object
         with open(file_path, "r") as json_file:
-            cacheData = json.load(json_file)
+            stagedData = json.load(json_file)
             layerObj = {"featureSet": {
-                "spatialReference": cacheData["spatialReference"],
-                "geometryType": cacheData["geometryType"],
-                "features": cacheData["features"]
+                "spatialReference": stagedData["spatialReference"],
+                "geometryType": stagedData["geometryType"],
+                "features": stagedData["features"]
             }, "layerDefinition": {
                 "currentVersion": "10.61",
                 "id": count,
-                "dislayField": cacheData["displayFieldName"],
-                "objectIdField": data_despt.OIDFieldName,
-                "hasM": data_despt.hasM,
-                "hasZ": data_despt.hasZ,
-                "isDataVersioned": data_despt.isVersioned,
-                "fields": cacheData["fields"],
-                "geometryType": cacheData["geometryType"],
-                "extent": data_despt.extent(),
-                "name": output_name,
+                "dislayField": stagedData["displayFieldName"],
+                "objectIdField": data_despt_array[count].OIDFieldName,
+                "hasM": data_despt_array[count].hasM,
+                "hasZ": data_despt_array[count].hasZ,
+                "isDataVersioned": data_despt_array[count].isVersioned,
+                "fields": stagedData["fields"],
+                "geometryType": stagedData["geometryType"],
+                "extent": data_despt_array[count].extent.JSON,
+                "name": data_name,
                 "type": "Feature Layer",
                 "drawingInfo": carto_styles_array[count],
                 "htmlPopupType": "esriServerHTMLPopupTypeNone",
                 "defaultVisibility": "true",
                 "capabilities": "Query",
-                "supportedQueryFormat"
+                "supportedQueryFormat": "JSON"
             }}
+            featureColl["layers"].append(layerObj)
         count += 1
     # write featurecollection into a file
     with open(cache_json_path, "w") as outfile:
-        json.dump(data, outfile)
+        json.dump(featureColl, outfile)
 
 
 # create a layer of features fewer than the defined max number of rows
