@@ -1,4 +1,6 @@
 "symbol": {
 	"type": "esriSLS",
-	"style": "appDefault"
+	"style": "esriSLSSolid",
+    "color":[0,54,163,255],
+    "width":1
 }

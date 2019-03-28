@@ -1,4 +1,11 @@
-"symbol": {
-	"type": "esriSFS",
-	"style": "appDefault"
-}
+"symbol":{
+    "type":"esriSFS",
+    "style":"esriSFSSolid",
+    "color":[192,243,250,255],
+    "outline":{
+        "type":"esriSLS",
+        "style":"esriSLSSolid",
+        "color":[110,110,110,255],
+        "width":0.4
+    }
+ }
