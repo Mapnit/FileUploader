@@ -464,14 +464,6 @@ def _register_cache_mssql(username, filename, cache_file_path, data_name, status
             db_conn.commit()
             app_log.info("register cache of [%s] [%s]: [%s]" % (username, filename, cache_file_path))
             return True
-        except mssql.MssqlDriverException as e:
-            print("A MSSQLDriverException has been caught." + str(e))
-        except mssql.DatabaseError as e:
-            print("A MSSQLDatabaseException has been caught.")
-            print('Number = ',e.number)
-            print('Severity = ',e.severity)
-            print('State = ',e.state)
-            print('Message = ',e.message)
         except mssql.DatabaseError as e:
             app_log.error('error in register_cache: ' + str(e))
             return False
@@ -1334,13 +1326,13 @@ def get_data(username, filename):
         app_log.info("use cached data: [%s]" % cache_json_path_string)
     else:
         # merely create a registry entry
-        _register_cache(username, filename, "", fname, "PROCESSING")
+        _register_cache(username, filename, u"", fname, u"PROCESSING")
         # prepare data
         app_log.debug("prepare data into json")
         cache_json_path_string, carto_json_string, total_row_count, cached_row_count = _prepare_data(username, filename)
         # register the data with the cache and status info
         if cache_json_path_string is not None:
-            _register_cache(username, filename, cache_json_path_string, fname, "READY", total_row_count, cached_row_count)
+            _register_cache(username, filename, cache_json_path_string, fname, u"READY", total_row_count, cached_row_count)
         # set the style
         if carto_json_string is not None:
             set_style(username, filename, carto_json_string)
