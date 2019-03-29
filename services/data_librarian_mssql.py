@@ -630,9 +630,13 @@ def _archive_data_file(username, filename):
             os.mkdir(archive_folder_path)
 
         archive_ts = datetime.datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
-
         archive_file_path = os.path.join(archive_folder_path, filename + "(" + archive_ts + ")" + ARCHIVE_FILE_EXTENSION)
-        os.rename(src_file_path, archive_file_path)
+
+        try:
+            os.rename(src_file_path, archive_file_path)
+        except:
+            app_log.error('failed to rename data file [%s]' % filename)
+            archive_file_path = None
 
         return archive_file_path
 
@@ -659,7 +663,7 @@ def _archive_data_mssql(username, filename, archive_file_path, retain_style=Fals
             db_conn = mssql.connect(server=config['db_server'], database=config['db_name'], user=config['db_user'], password=config['db_pwd'])
             row_cur = db_conn.cursor()
             if archive_file_path is None:
-                app_log.info("delete the orphan registry (source file is missing)")
+                app_log.warn("delete the orphan registry (source file is missing)")
             else:
                 # move the registry to the archived table
                 row_cur.execute(config['data_archive'], {'owner': username,
