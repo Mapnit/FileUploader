@@ -51,7 +51,7 @@ log_handler.setFormatter(log_formatter)
 log_handler.setLevel(logging.DEBUG)
 
 app_log = logging.getLogger('root')
-app_log.setLevel(logging.INFO)
+app_log.setLevel(logging.DEBUG)
 app_log.addHandler(log_handler)
 
 # global config variable
