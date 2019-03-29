@@ -260,15 +260,17 @@ define([
 			console.log("_displayDataOnMap: " + filename);
 			this.showMessage("Displaying data...");
 			
-			var featureJsonArray = this._getRegistry(filename, "data"); 
+			var featureMetadata = this._getRegistry(filename, "data"); 
 			var symbolArray = this._getRegistry(filename, "drawing_info");
 			var layerIds = this._getRegistry(filename, "layerIds"); 
-			
+			 
 			//loop through the items and add to the feature layer
+			var featureCollJson = featureMetadata["featureCollection"]; 
 			var layerIndex = 0;
 			var layerExtent = null;
 
-			array.forEach(featureJsonArray, lang.hitch(this, function(featureJson) {
+			array.forEach(featureCollJson["layers"], lang.hitch(this, function(layerJson) {
+				var featureJson = layerJson["featureSet"]; 
 				var featureArray = [];
 
 				var spatialRefWkid = featureJson["spatialReference"] ? featureJson["spatialReference"].wkid : 4326;
@@ -391,6 +393,7 @@ define([
 			this.showMessage("Loading data to map...");
 			
 			var featureMetadata = this._getRegistry(filename, "data");
+			var featureCollection = featureMetadata["featureCollection"]; 
 			
 			// remove the old handler
 			if (this._addToMapHandler) {
@@ -417,25 +420,12 @@ define([
 			var layerIds = []; 
 			var featureLayerSet = [];
 			
-			array.forEach(featureMetadata, lang.hitch(this, function(featureJson) {
-				// construct feature collection
-				var featureCollection = {
-					"layerDefinition": {
-						"displayFieldName": featureJson["displayFieldName"],
-						"geometryType": featureJson["geometryType"],
-						"fields": featureJson["fields"],
-						"fieldAliases": featureJson["fieldAliases"]
-					},
-					"featureSet": {
-						"features": [],
-						"geometryType": featureJson["geometryType"]
-					}
-				};
-
+			array.forEach(featureCollection["layers"], lang.hitch(this, function(layerJson) {
 				// var infoTemplate = new InfoTemplate(filename, "${*}");
+				var layerDef = layerJson["layerDefinition"];
 				
 				var tmplFieldInfos = []; 
-				array.forEach(featureJson["fields"], lang.hitch(this, function(fld) {
+				array.forEach(layerDef["fields"], lang.hitch(this, function(fld) {
 					tmplFieldInfos.push({
 						fieldName: fld.name,
 						label: fld.alias, 
@@ -443,21 +433,21 @@ define([
 					}); 
 				})); 
 				var popupTemplate = new PopupTemplate({
-					title: featureJson["displayFieldName"] || filename,
+					title: layerDef["displayField"] || filename,
 					fieldInfos: tmplFieldInfos
 				});
 				/*
-				if (featureJson["displayFieldName"] && featureJson["displayFieldName"].length > 0) {
+				if (layerJson["displayFieldName"] && layerJson["displayFieldName"].length > 0) {
 					popupTemplate = new PopupTemplate({
-						title: "{" + featureJson["displayFieldName"] + "}",
-						description: "{" + featureJson["displayFieldName"] + "}"
+						title: "{" + layerJson["displayFieldName"] + "}",
+						description: "{" + layerJson["displayFieldName"] + "}"
 					});
 				}
 				*/
 
 				//create a feature layer based on the feature collection
 				var layerId = this._layerIdPrefix + layerIdx; 
-				var featureLayer = new FeatureLayer(featureCollection, {
+				var featureLayer = new FeatureLayer(layerJson, {
 					id: layerId,
 					mode: FeatureLayer.MODE_SNAPSHOT,
 					infoTemplate: popupTemplate
