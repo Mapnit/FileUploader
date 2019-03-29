@@ -898,19 +898,15 @@ def _write_features_json(datapath, json_file_path):
 
 #
 # output features in json
+# (2019/3/29) changed the output from array to featureCollection
 #
-def _output_feature_json(json_file_paths, output_name=None):
-    count = 0
-    print "["
-    for file_path in json_file_paths:
-        if count > 0:
-            print ","
-        app_log.info("serve json from the cache file [%s]" % file_path)
-        with open(file_path, "r") as json_file:
-            for txtline in json_file:
-                print txtline
-        count += 1
-    print "]"
+def _output_feature_json(json_file_path, output_name=None):
+    app_log.info("serve json from the cache file [%s]" % json_file_path)
+    print '{"featureCollection": '
+    with open(json_file_path, "r") as json_file:
+        for txtline in json_file:
+            print txtline
+    print "}"
 
 
 #
@@ -1340,8 +1336,7 @@ def get_data(username, filename):
     # output feature as json
     if cache_json_path_string is not None:
         app_log.debug("send out data")
-        cache_json_paths = cache_json_path_string.split(FILE_PATH_SEP)
-        _output_feature_json(cache_json_paths)
+        _output_feature_json(cache_json_path_string)
 
 
 #
