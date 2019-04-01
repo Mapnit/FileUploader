@@ -73,11 +73,12 @@ def response():
         if UPLOAD_HTML_PARAM in arguments.keys():
             file_key = UPLOAD_HTML_PARAM
         else:
+            logging.debug(" - arguments.keys: %s" % arguments.keys)
             print "<textarea>{'error': 'no file uploaded', 'scope':'request'}</textarea>"
 
         if file_key is not None:
-            logging.debug("execute: upload a file")
             file_item = arguments[file_key]
+            logging.debug("execute: save the received file [%s]" % file_item.filename)
             if not file_item.file:
                 print "<textarea>{'error': 'empty file', 'scope':'request'}</textarea>"
             else:
