@@ -623,17 +623,19 @@ define(["dojo/_base/declare",
 	  
 	  /***** LSG data services (START) *****/
 	  uploadFile: function(fileInfo) {
-		var fileName = fileInfo.fileName; 
-		var username = "uPortal";  //get portal user
-		var self = this, queryString = "username="+ username; 
-
-		self._setStatus(i18n.addFromFile2.addingPattern
-				  .replace("{filename}",fileInfo.fileName));
 		console.log("Uploading file...");
+		this._setStatus(i18n.addFromFile2.addingPattern
+				  .replace("{filename}",fileInfo.fileName));
 		
+		var fileName = fileInfo.fileName; // local filename
+		var username = "uPortal";  //get portal user
+		var self = this; 
+
 		/*
+		// iframe no longer works in the Esri-wab framework
+		// - can't get the content of the embedded iframe
 		iframe.post(self.uploadServiceUrl, {
-			query: queryString,
+			query: {"username": username},
 			form: dojo.byId("_uploaderForm"),
 			handleAs: "json",
 			timeout: self.uploadTimeout
@@ -648,7 +650,6 @@ define(["dojo/_base/declare",
 			usePost: true, 
 			useProxy: false
 		}).then(function(response) {
-            self._setBusy(false);
             self._setStatus(i18n.addFromFile2.featureCountPattern
               .replace("{filename}",response.filename)
               .replace("{count}","NULL")
@@ -658,8 +659,8 @@ define(["dojo/_base/declare",
 		}, function(err) {
 			self._setBusy(false);
             self._setStatus(i18n.addFromFile2.addFailedPattern
-              .replace("{filename}",fileName));
-			console.warn("Uploading file... [" + fileName + "] Failed. [" + err.message + "]");
+              .replace("{filename}", fileName));
+			console.error("Uploading file... [" + fileName + "] Failed. [" + err.message + "]");
 		});
 	  }, 
 	  }, 
