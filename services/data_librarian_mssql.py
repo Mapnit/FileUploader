@@ -880,7 +880,8 @@ def _get_default_style(geom_type, label=None, description=None):
     with open(style_file_path, "r") as json_file:
         style_json = json_file.read()
 
-    return '{"label": "%s", "description": "%s", %s}' % (label, description, style_json)
+    # create the renderer
+    return '{"type": "simple", "label": "%s", "description": "%s", %s}' % (label, description, style_json)
 
 
 #
@@ -943,7 +944,7 @@ def _convert_to_featurecoll(stg_json_paths, carto_styles_array, data_despt_array
                 "extent": json.loads(data_despt_array[count].extent.JSON),
                 "name": data_name,
                 "type": "Feature Layer",
-                "drawingInfo": json.loads(carto_styles_array[count]),
+                "drawingInfo": {"renderer": json.loads(carto_styles_array[count])},
                 "htmlPopupType": "esriServerHTMLPopupTypeNone",
                 "defaultVisibility": "true",
                 "capabilities": "Query",
