@@ -663,6 +663,86 @@ define(["dojo/_base/declare",
 			console.error("Uploading file... [" + fileName + "] Failed. [" + err.message + "]");
 		});
 	  }, 
+	  
+	  requestData: function(filename) {
+		console.log("RequestData " + filename);
+		this._setStatus(i18n.addFromFile2.displayingPattern
+              .replace("{filename}",filename));
+		
+		// request new data 
+		var username = "uPortal";  //get portal user
+		var self = this; 
+		
+		/*
+		xhr(self.dataServiceUrl, {
+			method: "POST", 
+			query: {"action": "data", "username": username, "filename": filename},
+			handleAs: "json",
+			timeout: self.dataTimeout
+		 */
+		esriRequest({
+			url: self.dataServiceUrl, 
+			content: {"action": "data", "username": username, "filename": filename},
+			handleAs: "json",
+			timeout: self.dataTimeout
+		}, {
+			usePost: false, 
+			useProxy: false
+		}).then(function(response) {
+			if (response.error) {
+				// handle the app-specific error
+				self._setStatus(i18n.addFromFile2.displayFailedPattern
+				  .replace("{filename}", filename));
+				console.error("Displaying file... [" + filename + "] Failed. [" + response.error + "]");
+			} else {
+				// add feature collections to map
+				self._setStatus(i18n.addFromFile2.displaySuccessPattern
+				  .replace("{filename}", filename));
+				console.info("Displaying file... [" + filename + "] succeeded.");
+				self._addFeatureColl(response.featureCollection, filename);
+			}
+			self._setBusy(false);
+		}, function(err) {
+			self._setStatus(i18n.addFromFile2.displayFailedPattern
+			  .replace("{filename}", filename));
+			console.error("Displaying file... [" + filename + "] Failed. [" + err.message + "]");
+			self._setBusy(false);
+		});
+	  }, 	  
+	  
+	  _addFeatureColl: function(featureCollection, filename) {
+        //var triggerError = null; triggerError.length;
+        var fullExtent, layers = [], map = this.wabWidget.map, numFeatures = 0;
+        var loader = new LayerLoader();
+        if (featureCollection.layers) {
+          nLayers = featureCollection.layers.length;
+        }
+        array.forEach(featureCollection.layers,function(layer) {
+          var featureLayer = new FeatureLayer(layer, {
+            id: loader._generateLayerId(),
+            outFields: ["*"]
+          });
+          featureLayer.xtnAddData = true;
+          if (featureLayer.graphics) {
+            numFeatures += featureLayer.graphics.length;
+          }
+
+          loader._setFeatureLayerInfoTemplate(featureLayer,null,null);
+          if (featureLayer.fullExtent) {
+            if (!fullExtent) {
+              fullExtent = featureLayer.fullExtent;
+            } else {
+              fullExtent = fullExtent.union(featureLayer.fullExtent);
+            }
+          }
+          layers.push(featureLayer);
+        });
+        if (layers.length > 0) {
+          map.addLayers(layers);
+          if (fullExtent) {
+            map.setExtent(fullExtent.expand(1.25),true);
+          }
+        }		  
 	  }, 
 
 	  /***** LSG data services (END) *****/
