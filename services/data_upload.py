@@ -42,18 +42,32 @@ def _init_app(config_file):
     return
 
 
+def _decorateResponse(rawResponse, ajax):
+    if ajax == "iframe":
+        return "<textarea>%s</textarea>" % rawResponse
+    else: # direct ajax call
+        return rawResponse
+
+
 def response():
     import cgi
     import cgitb
 
     cgitb.enable()  # Optional; for debugging only
 
-    print "Content-Type: text/html"
+    arguments = cgi.FieldStorage()
+    ajax = "raw"
+    if 'ajax' in arguments.keys():
+        ajax = arguments['ajax'].value.lower()
+
+    if ajax == "iframe":
+        print "Content-Type: text/html"
+    else:
+        print "Content-Type: application/json"
     print
 
-    arguments = cgi.FieldStorage()
     if 'username' not in arguments.keys():
-        print "<textarea>{'error': 'unknown user', 'scope':'request'}</textarea>"
+        print _decorateResponse('{"error": "unknown user", "scope":"request"}', ajax)
     else:
         # logging.info("request parameters: ")
         # for i in arguments.keys():
@@ -65,8 +79,10 @@ def response():
         # expect the last modified time as a number
         modified_time = 0
         if 'mtime' in arguments.keys():
-            modified_time = arguments['mtime'].value  
+            modified_time = arguments['mtime'].value
             logging.debug(" - local modified time: " + modified_time)
+        else:
+            logging.warn(" - No local modified time provided")
         modified_time = int(modified_time)   # in seconds
 
         file_key = None
@@ -74,18 +90,19 @@ def response():
             file_key = UPLOAD_HTML_PARAM
         else:
             logging.debug(" - arguments.keys: %s" % arguments.keys)
-            print "<textarea>{'error': 'no file uploaded', 'scope':'request'}</textarea>"
+            print _decorateResponse('{"error": "no file uploaded", "scope":"request"}', ajax)
 
         if file_key is not None:
             file_item = arguments[file_key]
             logging.debug("execute: save the received file [%s]" % file_item.filename)
             if not file_item.file:
-                print "<textarea>{'error': 'empty file', 'scope':'request'}</textarea>"
+                print _decorateResponse('{"error": "empty file", "scope":"request"}', ajax)
+                #print "<textarea>{'error': 'empty file', 'scope':'request'}</textarea>"
             else:
                 user_store = os.path.join(config["store"], username)
                 if not os.path.exists(user_store):
                     os.mkdir(user_store)
-                    
+
                 file_basename = os.path.basename(file_item.filename)
                 svr_file_path = os.path.join(user_store, file_basename)
                 with open(svr_file_path, 'wb') as fout:
@@ -95,10 +112,14 @@ def response():
                     logging.debug("set the modified time as " + str(modified_time))
                     os.utime(svr_file_path, (modified_time, modified_time))
 
-                # html - iFrame
-                # print '{"filepath":"%s","filename":"%s","type":"json","username":"%s}' \
-                print '<textarea>{"type":"json","filepath":"%s","filename":"%s","username":"%s"}</textarea>' \
-                      % (file_basename, file_basename, username)
+                print _decorateResponse('{"type":"json","filepath":"%s","filename":"%s","username":"%s"}' \
+                      % (file_basename, file_basename, username), ajax)
+                # html - raw ajax
+                # print '{"type":"json","filepath":"%s","filename":"%s","username":"%s"}' \
+                #      % (file_basename, file_basename, username)
+                # html - iFrame ajax
+                # print '<textarea>{"type":"json","filepath":"%s","filename":"%s","username":"%s"}</textarea>' \
+                #      % (file_basename, file_basename, username)
                 # html - flash
                 # print 'file=../data_cache/kdb086/earthquakes_output.json,name=earthquakes_output.json,type=json'
 
