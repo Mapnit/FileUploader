@@ -1,5 +1,5 @@
 import os, datetime, re, logging, random
-import csv, requests
+import csv, json, requests
 import xml.etree.cElementTree as Et
 import unittest
 
@@ -921,7 +921,6 @@ def _convert_to_featurecoll(stg_json_paths, carto_styles_array, data_despt_array
     # featureCollection
     featureColl = {"showLegend": "true", "layers": []}
     # convert each file
-    import json
     for file_path in stg_json_paths:
         app_log.info("load json from the cache file [%s]" % file_path)
         # compose the featurecoll object
@@ -1055,6 +1054,8 @@ def _prepare_data(username, filename):
 
     carto_styles_string = get_style(username, filename)
     carto_styles_array = []
+    if carto_styles_string is not None and len(carto_styles_string) > 0:
+        carto_styles_array = json.loads(carto_styles_string)
 
     data_despt_array = []
 
@@ -1302,8 +1303,7 @@ def _prepare_data(username, filename):
     else:
         app_log.error("unsupported file type: %s" % fext)
 
-    if carto_styles_string is None:
-        carto_styles_string = "[" + ",".join(carto_styles_array) + "]"
+    carto_styles_string = json.dumps(carto_styles_array)
 
     # transform json into featureCollection
     cache_json_path = os.path.join(cache_folder, "%s_%s.json" % (fname, "featurecoll"))
