@@ -31,10 +31,8 @@ define(["dojo/_base/declare",
     "./util",
     "dojo/_base/kernel",
     "esri/request",
-	
 	"dojo/request/iframe",
-    "dojo/request/xhr",
-	
+	"dojo/request/xhr", 
     "esri/layers/FeatureLayer",
     "esri/layers/KMLLayer",
     "esri/geometry/scaleUtils",
@@ -103,7 +101,19 @@ define(["dojo/_base/declare",
         var self = this, dropNode = this.dropArea;
 
         var v, config = this.wabWidget.config;
-        if (config.addFromFile) {
+        if (config.addFromFile2) {
+		  this.uploadServiceUrl = config.addFromFile2.uploadServiceUrl;
+		  this.dataServiceUrl = config.addFromFile2.dataServiceUrl;
+		  try {
+            v = Number(config.addFromFile2.uploadTimeout);
+            if (typeof v === "number" && !isNaN(v)) {
+              v = Math.floor(v);
+              this.uploadTimeout = v;
+            }
+          } catch (ex) {
+            console.warn("Error setting addFromFile2.uploadTimeout:");
+            console.warn(ex);
+          }
           try {
             v = Number(config.addFromFile2.maxRecordCount);
             if (typeof v === "number" && !isNaN(v)) {
@@ -134,7 +144,8 @@ define(["dojo/_base/declare",
             self._setBusy(true);
             var fileInfo = self._getFileInfo();
             if (fileInfo.ok) {
-              self._execute(fileInfo);
+              //self._execute(fileInfo);
+			  self.uploadFile(fileInfo); 			  
             }
           }
         }));
@@ -168,7 +179,8 @@ define(["dojo/_base/declare",
             self._setBusy(true);
             var fileInfo = self._getFileInfo(event);
             if (fileInfo.ok) {
-              self._execute(fileInfo);
+              //self._execute(fileInfo);
+			  self.uploadFile(fileInfo); 
             }
           }
         }));
@@ -609,10 +621,51 @@ define(["dojo/_base/declare",
         return info;
       },
 	  
-	  uploadFile: function() {
+	  /***** LSG data services (START) *****/
+	  uploadFile: function(fileInfo) {
+		var fileName = fileInfo.fileName; 
+		var username = "uPortal";  //get portal user
+		var self = this, queryString = "username="+ username; 
+
+		self._setStatus(i18n.addFromFile2.addingPattern
+				  .replace("{filename}",fileInfo.fileName));
+		console.log("Uploading file...");
 		
+		/*
+		iframe.post(self.uploadServiceUrl, {
+			query: queryString,
+			form: dojo.byId("_uploaderForm"),
+			handleAs: "json",
+			timeout: self.uploadTimeout
+		 */
+		esriRequest({
+			url: self.uploadServiceUrl, 
+			content: {"username": username}, 
+			form: dojo.byId("_uploaderForm"),
+			handleAs: "json",
+			timeout: self.uploadTimeout
+		}, {
+			usePost: true, 
+			useProxy: false
+		}).then(function(response) {
+            self._setBusy(false);
+            self._setStatus(i18n.addFromFile2.featureCountPattern
+              .replace("{filename}",response.filename)
+              .replace("{count}","NULL")
+            );
+			console.info("Uploading file... [" + response.filename + "] Completed");
+			self.requestData(response.filename);
+		}, function(err) {
+			self._setBusy(false);
+            self._setStatus(i18n.addFromFile2.addFailedPattern
+              .replace("{filename}",fileName));
+			console.warn("Uploading file... [" + fileName + "] Failed. [" + err.message + "]");
+		});
+	  }, 
 	  }, 
 
+	  /***** LSG data services (END) *****/
+	  
       resize: function() {
       },
 
