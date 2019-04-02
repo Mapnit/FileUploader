@@ -1084,7 +1084,6 @@ def _prepare_data(username, filename):
             app_log.info("unzipped shape file [%s]" % stg_data_path)
 
         data_despt = arcpy.Describe(stg_data_path)
-        data_despt_array.append(data_despt)
         # assign default symbology
         if carto_styles_string is None:
             carto_styles_array.append(_get_default_style(data_despt.shapeType))
