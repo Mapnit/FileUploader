@@ -1446,8 +1446,8 @@ def response():
     import cgi
     import cgitb; cgitb.enable()  # Optional; for debugging only
 
-    print "Content-Type: text/json"
-    print
+    print "Content-Type: application/json"
+    print ""
 
     arguments = cgi.FieldStorage()
     if 'username' not in arguments.keys():
