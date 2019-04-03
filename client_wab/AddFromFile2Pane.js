@@ -117,6 +117,16 @@ define(["dojo/_base/declare",
             console.warn("Error setting addFromFile2.uploadTimeout:");
             console.warn(ex);
           }
+		  try {
+            v = Number(config.addFromFile2.dataTimeout);
+            if (typeof v === "number" && !isNaN(v)) {
+              v = Math.floor(v);
+              this.dataTimeout = v;
+            }
+          } catch (ex) {
+            console.warn("Error setting addFromFile2.dataTimeout:");
+            console.warn(ex);
+          }
           try {
             v = Number(config.addFromFile2.maxRecordCount);
             if (typeof v === "number" && !isNaN(v)) {
