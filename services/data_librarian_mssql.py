@@ -175,9 +175,8 @@ def _geocoder_by_esri(address, city, state, zipcode, country):
         if len(result["candidates"]) > 0:
             # match code
             match_code = result["candidates"][0]["score"]
-            # take the first one
-            coords = [result["candidates"][0]["location"]["x"], result["candidates"][0]["location"]["y"]]
-            # gc_result["resourceSets"][0]["resources"][0]["geocodePoints"][0]["coordinates"]
+            # take the first one (latitude, longitude)
+            coords = [result["candidates"][0]["location"]["y"], result["candidates"][0]["location"]["x"]]
             app_log.debug("%s%% match on the given address [%s]" % (match_code, ",".join([address, city, state, zipcode, country])))
         else:
             app_log.error("no coordinates matching the given address [%s]" % ",".join([address, city, state, zipcode, country]))
