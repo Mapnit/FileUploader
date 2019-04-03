@@ -30,9 +30,8 @@ define(["dojo/_base/declare",
     "./LayerLoader",
     "./util",
     "dojo/_base/kernel",
+	"esri/config", 
     "esri/request",
-	"dojo/request/iframe",
-	"dojo/request/xhr", 
     "esri/layers/FeatureLayer",
     "esri/layers/KMLLayer",
     "esri/geometry/scaleUtils",
@@ -41,9 +40,10 @@ define(["dojo/_base/declare",
   ],
   function(declare, lang, array, dojoJson, on, Deferred, domClass, Viewport, sniff,
     _WidgetBase, _TemplatedMixin, _WidgetsInTemplateMixin,template, i18n,
-     LayerLoader, util, kernel, esriRequest, FeatureLayer, KMLLayer, scaleUtils,
-     Message) {
+     LayerLoader, util, kernel, esriConfig, esriRequest, FeatureLayer, KMLLayer, scaleUtils, Message) {
 
+	esriConfig.defaults.io.corsEnabledServers.push("gisportal04.logicsolutionsgroup.com/UploadFile");
+	
     return declare([_WidgetBase, _TemplatedMixin, _WidgetsInTemplateMixin], {
 
       i18n: i18n,
@@ -674,6 +674,7 @@ define(["dojo/_base/declare",
 		var self = this; 
 		
 		/*
+		// xhr failed on CORS
 		xhr(self.dataServiceUrl, {
 			method: "POST", 
 			query: {"action": "data", "username": username, "filename": filename},
