@@ -36,6 +36,8 @@ TRANSFORMATION_LIST = {"NAD27_to_NAD83": "NAD_1927_To_NAD_1983_NADCON",
                        "NAD83_to_WGS84": "WGS_1984_(ITRF00)_To_NAD_1983"}
 
 BING_GC_URL = "http://dev.virtualearth.net/REST/v1/Locations?key={BING_MAP_KEY}&q={ADDRESS}"
+ESRI_GC_URL = "http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?\
+token={ESRI_AGOL_KEY}&address={ADDRESS}&city={CITY}&region={STATE}&postal={ZIPCODE}&countryCode={COUNTRY}&f=json"
 
 # config the logging
 ##logging.basicConfig(filename=os.path.join(os.path.join(DEPLOY_ROOT, "logs"), "data_librarian.log"),
@@ -113,35 +115,76 @@ def _parse_csv_header(csv_headers):
 # extract address from a row in the csv file
 #
 def _parse_address(address_fields, data_columns):
-    addr_part_array = []
+    addr_parts = {"address": "", "city": "", "state": "", "zipcode": "", "country": ""}
     # address field
     if "address" in address_fields.keys():
         address = data_columns[address_fields["address"]["index"]]
-        addr_part_array.append(str(address))
+        addr_parts["address"] = str(address)
     # app_log.debug("address = " + str(address))
     # city field
     if "city" in address_fields.keys():
         city = data_columns[address_fields["city"]["index"]]
-        addr_part_array.append(str(city))
+        addr_parts["city"] = str(city)
     # app_log.debug("city = " + str(city))
     # state field
     if "state" in address_fields.keys():
         state = data_columns[address_fields["state"]["index"]]
-        addr_part_array.append(str(state))
+        addr_parts["state"] = str(state)
     # app_log.debug("state = " + str(state))
     # zip field
     if "zipcode" in address_fields.keys():
         zipcode = data_columns[address_fields["zipcode"]["index"]]
-        addr_part_array.append(str(zipcode))
+        addr_parts["zipcode"] = str(zipcode)
     # app_log.debug("zipcode = " + str(zipcode))
     # country field
     if "country" in address_fields.keys():
         country = data_columns[address_fields["country"]["index"]]
-        addr_part_array.append(str(country))
+        addr_parts["country"] = str(country)
     # app_log.debug("country = " + str(country))
 
-    app_log.debug("address line: " + ",".join(addr_part_array))
-    return ",".join(addr_part_array)
+##    app_log.debug("address line: " + ",".join(addr_part_array))
+##    return ",".join(addr_part_array)
+    return addr_parts
+
+
+def geocode_address(addr_parts):
+    if config['gc_provider'] == "bing":
+        return _geocoder_by_bing(",".join([addr_parts["address"], addr_parts["city"],
+            addr_parts["state"], addr_parts["zipcode"], addr_parts["country"]]))
+    elif config['gc_provider'] == "esri":
+        return _geocoder_by_esri(addr_parts["address"], addr_parts["city"],
+            addr_parts["state"], addr_parts["zipcode"], addr_parts["country"])
+    else:
+        raise Exception("no geocoding provider specified")
+
+#
+# extract the geocoded location from the esri response
+#
+def _geocoder_by_esri(address, city, state, zipcode, country):
+    coords = None
+    # request Bing to geocode the address
+    gc_request_url = ESRI_GC_URL.replace("{ESRI_AGOL_KEY}", config['esri_agol_key'])\
+        .replace("{ADDRESS}", address)\
+        .replace("{CITY}", "" if len(city)==0 else city)\
+        .replace("{STATE}", "" if len(state)==0 else state)\
+        .replace("{ZIPCODE}", "" if len(zipcode)==0 else zipcode)\
+        .replace("{COUNTRY}", "USA" if len(country)==0 else country)
+    req = requests.get(gc_request_url)
+    if req.status_code == 200:
+        result = req.json()
+        if len(result["candidates"]) > 0:
+            # match code
+            match_code = result["candidates"][0]["score"]
+            # take the first one
+            coords = [result["candidates"][0]["location"]["x"], result["candidates"][0]["location"]["y"]]
+            # gc_result["resourceSets"][0]["resources"][0]["geocodePoints"][0]["coordinates"]
+            app_log.debug("%s%% match on the given address [%s]" % (match_code, ",".join([address, city, state, zipcode, country])))
+        else:
+            app_log.error("no coordinates matching the given address [%s]" % ",".join([address, city, state, zipcode, country]))
+    else:
+        app_log.error("Esri fails to return the geocoding result {status code: %i]" % req.status_code)
+
+    return coords
 
 
 #
@@ -161,7 +204,7 @@ def _geocoder_by_bing(address_line):
             # take the first one
             coords = result["resourceSets"][0]["resources"][0]["point"]["coordinates"]
             # gc_result["resourceSets"][0]["resources"][0]["geocodePoints"][0]["coordinates"]
-            app_log.debug("%s match on the given address [%s]" % (match_code, address_line))
+            app_log.debug("%s%% match on the given address [%s]" % (match_code, address_line))
         else:
             app_log.error("no coordinates matching the given address [%s]" % address_line)
     else:
@@ -1184,8 +1227,8 @@ def _prepare_data(username, filename):
                         csv_writer.writerow(csv_headers)
                         # read the data rows from the 2nd line
                         for data_fields in csv_reader:
-                            address_line = _parse_address(csv_qualifiers, data_fields)
-                            gc_coords = _geocoder_by_bing(address_line)
+                            address_parts = _parse_address(csv_qualifiers, data_fields)
+                            gc_coords = geocode_address(address_parts)
                             if gc_coords is not None:
                                 data_fields.append(gc_coords[0])
                                 data_fields.append(gc_coords[1])
