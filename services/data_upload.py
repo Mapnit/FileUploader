@@ -11,9 +11,22 @@ DEPLOY_ROOT = r"C:\inetpub\wwwroot\chen_test\services"
 # app runtime config
 CONFIG_FILE = os.path.join(DEPLOY_ROOT, "web.config")
 
-logging.basicConfig(filename=os.path.join(os.path.join(DEPLOY_ROOT, "logs"), "data_upload.log"),
-                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                    level=logging.DEBUG)
+# config the logging
+##logging.basicConfig(filename=os.path.join(os.path.join(DEPLOY_ROOT, "logs"), "data_upload.log"),
+##                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+##                    level=logging.DEBUG)
+from logging.handlers import RotatingFileHandler
+
+log_formatter = logging.Formatter('%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s')
+log_handler = RotatingFileHandler(os.path.join(os.path.join(DEPLOY_ROOT, "logs"), "data_upload.log"),
+                                mode='a', maxBytes=5*1024*1024,
+                                backupCount=2, encoding=None, delay=0)
+log_handler.setFormatter(log_formatter)
+log_handler.setLevel(logging.DEBUG)
+
+app_log = logging.getLogger('root')
+app_log.setLevel(logging.DEBUG)
+app_log.addHandler(log_handler)
 
 # app-wide constants
 UPLOAD_HTML_PARAM = "uploadedfile"
@@ -69,32 +82,32 @@ def response():
     if 'username' not in arguments.keys():
         print _decorateResponse('{"error": "unknown user", "scope":"request"}', ajax)
     else:
-        # logging.info("request parameters: ")
+        # app_log.info("request parameters: ")
         # for i in arguments.keys():
-        #    logging.debug(" - " + str(i) + ": " + str(arguments[i].value))
+        #    app_log.debug(" - " + str(i) + ": " + str(arguments[i].value))
 
         username = str(arguments['username'].value).lower()
-        logging.debug(" - username: " + username)
+        app_log.debug(" - username: " + username)
 
         # expect the last modified time as a number
         modified_time = 0
         if 'mtime' in arguments.keys():
             modified_time = arguments['mtime'].value
-            logging.debug(" - local modified time: " + modified_time)
+            app_log.debug(" - local modified time: " + modified_time)
         else:
-            logging.warn(" - No local modified time provided")
+            app_log.warn(" - No local modified time provided")
         modified_time = int(modified_time)   # in seconds
 
         file_key = None
         if UPLOAD_HTML_PARAM in arguments.keys():
             file_key = UPLOAD_HTML_PARAM
         else:
-            logging.debug(" - arguments.keys: %s" % arguments.keys)
+            app_log.debug(" - arguments.keys: %s" % arguments.keys)
             print _decorateResponse('{"error": "no file uploaded", "scope":"request"}', ajax)
 
         if file_key is not None:
             file_item = arguments[file_key]
-            logging.debug("execute: save the received file [%s]" % file_item.filename)
+            app_log.debug("execute: save the received file [%s]" % file_item.filename)
             if not file_item.file:
                 print _decorateResponse('{"error": "empty file", "scope":"request"}', ajax)
                 #print "<textarea>{'error': 'empty file', 'scope':'request'}</textarea>"
@@ -109,7 +122,7 @@ def response():
                     shutil.copyfileobj(file_item.file, fout, 100000)
 
                 if modified_time > 0:
-                    logging.debug("set the modified time as " + str(modified_time))
+                    app_log.debug("set the modified time as " + str(modified_time))
                     os.utime(svr_file_path, (modified_time, modified_time))
 
                 print _decorateResponse('{"type":"json","filepath":"%s","filename":"%s","username":"%s"}' \
@@ -123,7 +136,7 @@ def response():
                 # html - flash
                 # print 'file=../data_cache/kdb086/earthquakes_output.json,name=earthquakes_output.json,type=json'
 
-    logging.info("response completed")
+    app_log.info("response completed")
     return
 
 
