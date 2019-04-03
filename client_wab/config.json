@@ -1,0 +1,39 @@
+{
+  "numPerPage": 30,
+  "scopeOptions": {
+    "MyContent": {
+      "allow": true,
+      "label": null
+    },
+    "MyOrganization": {
+      "allow": true,
+      "label": null
+    },
+    "Curated": {
+      "allow": true,
+      "label": null,
+      "filter": null
+    },
+    "ArcGISOnline": {
+      "allow": true,
+      "label": null
+    },
+    "defaultScope": "MyOrganization"
+  },
+  "addFromUrl": {
+    "allow": true
+  },
+  "addFromFile": {
+    "allow": true,
+    "maxRecordCount": 1000
+  },
+  "addFromFile2": {
+    "allow": true,
+    "maxRecordCount": 9999, 
+	"uploadServiceUrl": "https://gisportal04.logicsolutionsgroup.com/UploadFile/data_upload.py", 
+	"uploadTimeout": 60000,
+	"dataServiceUrl": "https://gisportal04.logicsolutionsgroup.com/UploadFile/data_librarian.py",
+	"dataTimeout": 180000,
+	"kmlParserType" : "LSG"
+  }
+}
