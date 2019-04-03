@@ -20,6 +20,7 @@ define(["dojo/_base/declare",
     "dojo/on",
     "dojo/Deferred",
     "dojo/dom-class",
+	"dojo/dom-style", 
     "dijit/Viewport",
     "dojo/sniff",
     "dijit/_WidgetBase",
@@ -38,7 +39,7 @@ define(["dojo/_base/declare",
     "jimu/dijit/Message",
     "jimu/dijit/CheckBox"
   ],
-  function(declare, lang, array, dojoJson, on, Deferred, domClass, Viewport, sniff,
+  function(declare, lang, array, dojoJson, on, Deferred, domClass, domStyle, Viewport, sniff,
     _WidgetBase, _TemplatedMixin, _WidgetsInTemplateMixin,template, i18n,
      LayerLoader, util, kernel, esriConfig, esriRequest, FeatureLayer, KMLLayer, scaleUtils, Message) {
 
@@ -70,7 +71,8 @@ define(["dojo/_base/declare",
 
       postCreate: function() {
         this.inherited(arguments);
-        this.generalizeCheckBox.setLabel(i18n.addFromFile2.generalizeOn);
+		domStyle.set(this.generalizeCheckBox2.domNode, "visibility", "hidden");
+        this.generalizeCheckBox2.setLabel(i18n.addFromFile2.generalizeOn);
         this.own(Viewport.on("resize",this.resize()));
       },
 
@@ -351,7 +353,7 @@ define(["dojo/_base/declare",
           baseFileName: fileInfo.baseFileName,
           fileName: fileInfo.fileName,
           fileType: fileInfo.fileType,
-          generalize: !!this.generalizeCheckBox.getValue(),
+          generalize: !!this.generalizeCheckBox2.getValue(),
           publishParameters: {},
           numFeatures: 0
         };
