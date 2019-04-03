@@ -104,6 +104,7 @@ define(["dojo/_base/declare",
 
         var v, config = this.wabWidget.config;
         if (config.addFromFile2) {
+		  this.kmlParserType = config.addFromFile2.kmlParserType;
 		  this.uploadServiceUrl = config.addFromFile2.uploadServiceUrl;
 		  this.dataServiceUrl = config.addFromFile2.dataServiceUrl;
 		  try {
@@ -628,7 +629,12 @@ define(["dojo/_base/declare",
 		console.log("Uploading file...");
 		this._setStatus(i18n.addFromFile2.addingPattern
 				  .replace("{filename}",fileInfo.fileName));
+		// handle KML 
+        if (fileInfo.fileType.toLowerCase() === "kml" && this.kmlParserType === "esri") {
+          return this._executeKml(fileInfo);
+        }
 		
+		// handle non-KML
 		var fileName = fileInfo.fileName; // local filename
 		var username = "uPortal";  //get portal user
 		var self = this; 
