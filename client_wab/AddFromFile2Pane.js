@@ -655,6 +655,7 @@ define(["dojo/_base/declare",
 		
 		// handle non-KML
 		var fileName = fileInfo.fileName; // local filename
+		var lastModified = Math.round(fileInfo.file.lastModifiedDate.getTime() / 1000); 
 		var self = this; 
 
 		/*
@@ -668,7 +669,7 @@ define(["dojo/_base/declare",
 		 */
 		esriRequest({
 			url: self.uploadServiceUrl, 
-			content: {"username": this.username}, 
+			content: {"username": this.username, "mtime":lastModified}, 
 			form: dojo.byId("_uploaderForm"),
 			handleAs: "json",
 			timeout: self.uploadTimeout
