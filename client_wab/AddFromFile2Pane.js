@@ -36,12 +36,14 @@ define(["dojo/_base/declare",
     "esri/layers/FeatureLayer",
     "esri/layers/KMLLayer",
     "esri/geometry/scaleUtils",
+	"jimu/portalUtils",
     "jimu/dijit/Message",
     "jimu/dijit/CheckBox"
   ],
   function(declare, lang, array, dojoJson, on, Deferred, domClass, domStyle, Viewport, sniff,
     _WidgetBase, _TemplatedMixin, _WidgetsInTemplateMixin,template, i18n,
-     LayerLoader, util, kernel, esriConfig, esriRequest, FeatureLayer, KMLLayer, scaleUtils, Message) {
+     LayerLoader, util, kernel, esriConfig, esriRequest, FeatureLayer, KMLLayer, scaleUtils, 
+	 portalUtils, Message) {
 
 	esriConfig.defaults.io.corsEnabledServers.push("gisportal04.logicsolutionsgroup.com/UploadFile");
 	
@@ -68,6 +70,9 @@ define(["dojo/_base/declare",
         "type": "geojson",
         "url": "images/filetypes/geojson.svg"
       }],
+	  /***** portal user info (START) *****/
+	  username: 'genericuser',
+	  /***** portal user info (END) *****/
 
       postCreate: function() {
         this.inherited(arguments);
@@ -140,6 +145,7 @@ define(["dojo/_base/declare",
             console.warn(ex);
           }
         }
+		
 
         if(i18n.addFromFile2.types) {
           try {
@@ -245,6 +251,9 @@ define(["dojo/_base/declare",
 
           new Message({message: test});
         })));
+		
+		// get current portal user
+		this._getPortalUser(this.wabWidget.appConfig.portalUrl); 
       },
 
       _addFeatures: function(job,featureCollection) {
@@ -646,21 +655,20 @@ define(["dojo/_base/declare",
 		
 		// handle non-KML
 		var fileName = fileInfo.fileName; // local filename
-		var username = "uPortal";  //get portal user
 		var self = this; 
 
 		/*
 		// iframe no longer works in the Esri-wab framework
 		// - can't get the content of the embedded iframe
 		iframe.post(self.uploadServiceUrl, {
-			query: {"username": username},
+			query: {"username": this.username},
 			form: dojo.byId("_uploaderForm"),
 			handleAs: "json",
 			timeout: self.uploadTimeout
 		 */
 		esriRequest({
 			url: self.uploadServiceUrl, 
-			content: {"username": username}, 
+			content: {"username": this.username}, 
 			form: dojo.byId("_uploaderForm"),
 			handleAs: "json",
 			timeout: self.uploadTimeout
@@ -688,20 +696,19 @@ define(["dojo/_base/declare",
               .replace("{filename}",filename));
 		
 		// request new data 
-		var username = "uPortal";  //get portal user
 		var self = this; 
 		
 		/*
 		// xhr failed on CORS
 		xhr(self.dataServiceUrl, {
 			method: "POST", 
-			query: {"action": "data", "username": username, "filename": filename},
+			query: {"action": "data", "username": this.username, "filename": filename},
 			handleAs: "json",
 			timeout: self.dataTimeout
 		 */
 		esriRequest({
 			url: self.dataServiceUrl, 
-			content: {"action": "data", "username": username, "filename": filename},
+			content: {"action": "data", "username": this.username, "filename": filename},
 			handleAs: "json",
 			timeout: self.dataTimeout
 		}, {
@@ -762,6 +769,15 @@ define(["dojo/_base/declare",
             map.setExtent(fullExtent.expand(1.25),true);
           }
         }		  
+	  }, 
+	  
+	  _getPortalUser: function(portalUrl) {
+		var portal = portalUtils.getPortal(portalUrl);
+		if (portal.user !== null) {
+			this.username = portal.user.username;
+			//this.userLevel = portalUtils.getPortal(this._portalUrl).user.level;
+			//this.token = portalUtils.getPortal(this._portalUrl).user.credential.token;
+		}
 	  }, 
 
 	  /***** LSG data services (END) *****/
