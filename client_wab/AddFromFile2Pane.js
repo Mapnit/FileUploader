@@ -739,12 +739,27 @@ define(["dojo/_base/declare",
 	  
 	  _addFeatureColl: function(featureCollection, filename) {
         //var triggerError = null; triggerError.length;
-        var fullExtent, layers = [], map = this.wabWidget.map, numFeatures = 0;
+        var fullExtent, map = this.wabWidget.map, numFeatures = 0;
+		var layersToAdd = [], layersToRemove = []; 
         var loader = new LayerLoader();
         if (featureCollection.layers) {
           nLayers = featureCollection.layers.length;
         }
+		// add featureCollection as FeatureLayer and remove any duplicate one
         array.forEach(featureCollection.layers,function(layer) {
+		  // remove the layer if a FeatureLayer with the same name is already in map
+		  var layerDef = layer.layerDefinition; 
+		  array.forEach(map.graphicsLayerIds, function(graphicsLayerId) {
+		    var graphicsLayer = map.getLayer(graphicsLayerId);
+		    if (graphicsLayer && 
+				  graphicsLayer.name === layerDef.name &&
+				  graphicsLayer.type === "Feature Layer" &&
+				  graphicsLayer.geometryType === layerDef.geometryType &&
+				  graphicsLayer.capabilities === layerDef.capabilities) {
+				layersToRemove.push(graphicsLayer); 
+			  }	
+		  });
+		  
           var featureLayer = new FeatureLayer(layer, {
             id: loader._generateLayerId(),
             outFields: ["*"]
@@ -762,10 +777,15 @@ define(["dojo/_base/declare",
               fullExtent = fullExtent.union(featureLayer.fullExtent);
             }
           }
-          layers.push(featureLayer);
+          layersToAdd.push(featureLayer);
         });
-        if (layers.length > 0) {
-          map.addLayers(layers);
+		if (layersToRemove.length > 0) {
+		  array.forEach(layersToRemove, function(lyr) {
+		    map.removeLayer(lyr);
+		  }); 
+		}
+        if (layersToAdd.length > 0) {
+          map.addLayers(layersToAdd);
           if (fullExtent) {
             map.setExtent(fullExtent.expand(1.25),true);
           }
