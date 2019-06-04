@@ -80,6 +80,19 @@ def _init_app(config_file):
 
 
 #
+# decrypt the text in the config file
+#
+def _decrypt(ciphered_text):
+    if CRYPT_KEY is not None and type(ciphered_text) in [str]:
+        from cryptography.fernet import Fernet
+        cipher_suite = Fernet(CRYPT_KEY)
+        clear_text = (cipher_suite.decrypt(ciphered_text))
+        return clear_text
+    else:
+        return None
+		
+		
+#
 # inspect a csv file for addr/loc-related headers
 #
 def _parse_csv_header(csv_headers):
