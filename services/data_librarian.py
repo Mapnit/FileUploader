@@ -7,7 +7,7 @@ import unittest
 DEPLOY_ROOT = r"C:\Users\kdb086\Projects\CgiPythonProject"
 
 # app runtime config
-CONFIG_FILE = os.path.join(DEPLOY_ROOT, "web.config")
+CONFIG_FILE = os.path.join(DEPLOY_ROOT, "UploadFile.config")
 
 FILE_PATH_SEP = ';'
 # limited by the constraints in Esri File-GDB
